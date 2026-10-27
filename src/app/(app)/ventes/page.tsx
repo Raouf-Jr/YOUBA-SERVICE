@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { DateNav } from "@/components/date-nav";
 import { ConfirmAction } from "@/components/form-bits";
+import { PendingEntries } from "@/components/pending-entries";
 import { PageSkeleton } from "@/components/skeleton";
 import { Badge, Card, CardHeader, EmptyState, PageHeader, cx } from "@/components/ui";
 import { deleteSale } from "@/lib/actions/sales";
@@ -78,6 +79,10 @@ async function Sales({ searchParams }: { searchParams: PageProps<"/ventes">["sea
             date={date}
             currency={user.shop.currency}
             canManageProducts={user.role === "owner"}
+            isToday={date === t}
+            userId={user.id}
+            shopId={user.shop.id}
+            timezone={user.shop.timezone}
           />
         </Card>
 
@@ -132,8 +137,11 @@ async function Sales({ searchParams }: { searchParams: PageProps<"/ventes">["sea
 
           <Card>
             <CardHeader title="Ventes enregistrées" description={daySales.length ? undefined : "Rien pour cette journée"} />
+            <div className="mt-2">
+              <PendingEntries userId={user.id} kind="sale" currency={user.shop.currency} filter={date === t ? undefined : date} />
+            </div>
             {daySales.length ? (
-              <ul className="mt-2 divide-y divide-line">
+              <ul className="divide-y divide-line">
                 {daySales.map((s) => (
                   <li key={s.id} className="flex items-center gap-3 px-5 py-3">
                     <div className="min-w-0 flex-1">

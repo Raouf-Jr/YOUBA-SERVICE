@@ -4,7 +4,7 @@ import { Pencil, Trash2 } from "lucide-react";
 import { ConfirmAction, Modal } from "@/components/form-bits";
 import { IconButton } from "@/components/ui";
 import { deleteExpense } from "@/lib/actions/expenses";
-import { ExpenseForm, type ExpenseValues } from "./expense-form";
+import { EditExpenseForm, type ExpenseValues } from "./expense-form";
 
 export function ExpenseRowActions({ expense, maxDate, label }: { expense: ExpenseValues; maxDate: string; label: string }) {
   return (
@@ -17,7 +17,7 @@ export function ExpenseRowActions({ expense, maxDate, label }: { expense: Expens
           </IconButton>
         )}
       >
-        {(close) => <ExpenseForm expense={expense} defaultDate={expense.date} maxDate={maxDate} onDone={close} />}
+        {(close) => <EditExpenseForm expense={expense} maxDate={maxDate} onDone={close} />}
       </Modal>
       <ConfirmAction action={deleteExpense.bind(null, expense.id)} confirm={`Supprimer la dépense « ${label} » ?`} label="Supprimer">
         <Trash2 />

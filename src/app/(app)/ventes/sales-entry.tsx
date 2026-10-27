@@ -2,13 +2,16 @@
 
 import { Minus, Package, Plus, Search, TriangleAlert } from "lucide-react";
 import Link from "next/link";
-import { useActionState, useMemo, useState } from "react";
-import { ActionForm, FormMessage, SubmitButton, useOnSuccess } from "@/components/form-bits";
-import { EmptyState, cx, inputClass } from "@/components/ui";
-import { recordSales } from "@/lib/actions/sales";
+import { useOffline } from "next/offline";
+import { useMemo, useState, type FormEvent } from "react";
+import { FormMessage } from "@/components/form-bits";
+import { Button, EmptyState, cx, inputClass } from "@/components/ui";
 import { PAYMENT_METHODS } from "@/lib/constants";
+import { today } from "@/lib/dates";
 import { formatMoney, formatNumber } from "@/lib/format";
-import { parseAmount } from "@/lib/forms";
+import { parseAmount, type FormState } from "@/lib/forms";
+import { addEntry, newId, useOutbox } from "@/lib/offline/outbox";
+import { syncOutbox } from "@/lib/offline/sync";
 
 export type EntryProduct = {
   id: string;
@@ -25,28 +28,66 @@ const num = (v: string | undefined) => {
   return n != null && Number.isFinite(n) && n > 0 ? n : 0;
 };
 
+/** Saves the checkout on the device, then tries to send it. */
+function queueCheckout(input: {
+  userId: string;
+  shopId: string;
+  date: string;
+  paymentMethod: string;
+  lines: { productId: string; quantity: number; unitPrice: number }[];
+  summary: { total: number; items: number; label: string };
+}) {
+  const checkoutId = newId();
+  addEntry({
+    id: checkoutId,
+    kind: "sale",
+    userId: input.userId,
+    shopId: input.shopId,
+    createdAt: Date.now(),
+    attempts: 0,
+    payload: { checkoutId, shopId: input.shopId, date: input.date, paymentMethod: input.paymentMethod, lines: input.lines },
+    summary: input.summary,
+  });
+  void syncOutbox(input.userId);
+}
+
 export function SalesEntry({
   products,
   date,
+  isToday,
   currency,
   canManageProducts,
+  userId,
+  shopId,
+  timezone,
 }: {
   products: EntryProduct[];
   date: string;
+  /** The page shows today: use the device's date at the moment of the sale (the page may be an offline copy). */
+  isToday: boolean;
   currency: string;
   canManageProducts: boolean;
+  userId: string;
+  shopId: string;
+  timezone: string;
 }) {
-  const [state, action] = useActionState(recordSales, {});
+  const offline = useOffline();
+  // Sales still waiting to be sent already left the shelf.
+  const outbox = useOutbox(userId);
+  const waitingQty = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const e of outbox) {
+      if (e.kind !== "sale" || e.error) continue;
+      for (const l of e.payload.lines) map.set(l.productId, (map.get(l.productId) ?? 0) + l.quantity);
+    }
+    return map;
+  }, [outbox]);
+  const [state, setState] = useState<FormState & { errors?: Record<string, string> }>({});
   const [qty, setQty] = useState<Record<string, string>>({});
   const [price, setPrice] = useState<Record<string, string>>({});
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<string | null>(null);
   const [method, setMethod] = useState("especes");
-
-  useOnSuccess(state, () => {
-    setQty({});
-    setPrice({});
-  });
 
   const categories = useMemo(
     () => [...new Set(products.map((p) => p.category).filter((c): c is string => !!c))].sort((a, b) => a.localeCompare(b, "fr")),
@@ -62,6 +103,47 @@ export function SalesEntry({
   const selected = products.filter((p) => num(qty[p.id]) > 0);
   const total = selected.reduce((sum, p) => sum + num(qty[p.id]) * unitPrice(p), 0);
   const items = selected.reduce((sum, p) => sum + num(qty[p.id]), 0);
+
+  /**
+   * The sale is saved on the device first (instant, works offline), then sent to the server;
+   * its checkout id makes sure it is only ever counted once.
+   */
+  const submit = (event: FormEvent) => {
+    event.preventDefault();
+    const errors: Record<string, string> = {};
+    const lines = selected.map((p) => {
+      const rawPrice = price[p.id];
+      const unit = rawPrice !== undefined ? parseAmount(rawPrice) : p.salePrice;
+      if (unit == null || !Number.isFinite(unit) || unit < 0) errors[`price:${p.id}`] = "Prix invalide";
+      return { productId: p.id, quantity: num(qty[p.id]), unitPrice: unit ?? 0 };
+    });
+    if (Object.keys(errors).length) return setState({ ok: false, errors, message: "Vérifiez les prix en rouge." });
+    if (lines.length === 0) return setState({ ok: false, message: "Indiquez au moins une quantité vendue." });
+
+    queueCheckout({
+      userId,
+      shopId,
+      date: isToday ? today(timezone) : date,
+      paymentMethod: method,
+      lines,
+      summary: {
+        total,
+        items,
+        label: selected.map((p) => p.name).slice(0, 2).join(", ") + (selected.length > 2 ? ` +${selected.length - 2}` : ""),
+      },
+    });
+    setQty({});
+    setPrice({});
+    setState((prev) => ({
+      ok: true,
+      stamp: (prev.stamp ?? 0) + 1,
+      message: offline
+        ? "Vente gardée sur l'appareil : elle sera envoyée dès le retour du réseau."
+        : lines.length > 1
+          ? `${lines.length} produits enregistrés.`
+          : "Vente enregistrée.",
+    }));
+  };
 
   const step = (id: string, delta: number) =>
     setQty((q) => {
@@ -90,9 +172,7 @@ export function SalesEntry({
   }
 
   return (
-    <ActionForm action={action}>
-      <input type="hidden" name="date" value={date} />
-      <input type="hidden" name="paymentMethod" value={method} />
+    <form onSubmit={submit} noValidate>
 
       <div className="flex flex-col gap-3 px-4 pt-4 sm:px-5">
         {products.length > 6 && (
@@ -131,7 +211,8 @@ export function SalesEntry({
       <ul className="mt-3 divide-y divide-line border-y border-line">
         {visible.map((p) => {
           const q = num(qty[p.id]);
-          const short = p.trackStock && q > p.stock;
+          const stock = Math.round((p.stock - (waitingQty.get(p.id) ?? 0)) * 1000) / 1000;
+          const short = p.trackStock && q > stock;
           return (
             <li key={p.id} className={cx("px-4 py-3 transition-colors sm:px-5", q > 0 && "bg-accent-soft/45")}>
               <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
@@ -139,8 +220,8 @@ export function SalesEntry({
                   <p className="truncate font-medium text-ink">{p.name}</p>
                   <p className="flex items-center gap-1.5 text-xs text-muted">
                     {p.trackStock ? (
-                      <span className={cx(p.stock <= 0 ? "text-bad" : short ? "text-warn" : undefined)}>
-                        Stock : {formatNumber(p.stock)} {p.unit}
+                      <span className={cx(stock <= 0 ? "text-bad" : short ? "text-warn" : undefined)}>
+                        Stock : {formatNumber(stock)} {p.unit}
                       </span>
                     ) : (
                       <span>par {p.unit}</span>
@@ -233,11 +314,11 @@ export function SalesEntry({
             </p>
             <p className="tabular truncate text-xl font-semibold tracking-tight text-ink">{formatMoney(total, currency)}</p>
           </div>
-          <SubmitButton size="lg" className="shrink-0" pendingLabel="Enregistrement…">
+          <Button type="submit" size="lg" className="shrink-0">
             Enregistrer
-          </SubmitButton>
+          </Button>
         </div>
       </div>
-    </ActionForm>
+    </form>
   );
 }

@@ -6,17 +6,22 @@ import { round2 } from "@/lib/stats";
 
 export type SaleLine = { productId: string; quantity: number; unitPrice: number };
 
-/** Records one checkout's lines and takes the quantities out of stock. */
+/**
+ * Records one checkout's lines and takes the quantities out of stock.
+ * With a `checkoutId`, recording the same checkout again is a no-op (returns 0).
+ */
 export async function recordSales(
   db: DB,
   shopId: string,
-  input: { date: ISODate; paymentMethod: string; userId: string; lines: SaleLine[] },
+  input: { date: ISODate; paymentMethod: string; userId: string; lines: SaleLine[]; checkoutId?: string },
 ) {
-  const lines = input.lines.filter((l) => l.quantity > 0);
+  // One line per product: the checkout id + product id pair is what makes a re-send harmless.
+  const seen = new Set<string>();
+  const lines = input.lines.filter((l) => l.quantity > 0 && !seen.has(l.productId) && seen.add(l.productId));
   if (lines.length === 0) return 0;
 
   return db.transaction(async (tx) => {
-    const ids = [...new Set(lines.map((l) => l.productId))];
+    const ids = lines.map((l) => l.productId);
     const found = await tx
       .select()
       .from(products)
@@ -37,22 +42,27 @@ export async function recordSales(
           unitCost: product.costPrice,
           total: round2(line.quantity * line.unitPrice),
           paymentMethod: input.paymentMethod,
+          checkoutId: input.checkoutId ?? null,
           createdById: input.userId,
         },
       ];
     });
     if (rows.length === 0) return 0;
-    await tx.insert(sales).values(rows);
+    const inserted = await tx
+      .insert(sales)
+      .values(rows)
+      .onConflictDoNothing()
+      .returning({ productId: sales.productId, quantity: sales.quantity });
 
-    for (const row of rows) {
-      if (byId.get(row.productId)!.trackStock) {
+    for (const row of inserted) {
+      if (row.productId && byId.get(row.productId)?.trackStock) {
         await tx
           .update(products)
           .set({ stock: sql`${products.stock} - ${row.quantity}` })
           .where(eq(products.id, row.productId));
       }
     }
-    return rows.length;
+    return inserted.length;
   });
 }
 

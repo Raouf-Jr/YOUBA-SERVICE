@@ -2,8 +2,8 @@ import { LogOut, Smartphone } from "lucide-react";
 import type { Metadata } from "next";
 import { Suspense, type ReactNode } from "react";
 import { PageSkeleton } from "@/components/skeleton";
-import { Button, Card, PageHeader } from "@/components/ui";
-import { logout } from "@/lib/actions/auth";
+import { LogoutButton } from "@/components/logout-button";
+import { buttonClass, Card, PageHeader } from "@/components/ui";
 import { requireUser } from "@/lib/auth/dal";
 import { listTeam } from "@/lib/data/account";
 import { getDb } from "@/lib/db";
@@ -54,11 +54,9 @@ async function Settings() {
                 d&apos;accueil »).
               </span>
             </p>
-            <form action={logout}>
-              <Button type="submit" variant="secondary" className="text-bad">
-                <LogOut /> Se déconnecter
-              </Button>
-            </form>
+            <LogoutButton userId={user.id} className={buttonClass("secondary", "md", "text-bad")}>
+              <LogOut /> Se déconnecter
+            </LogoutButton>
           </div>
         </Section>
       </div>

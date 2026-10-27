@@ -15,3 +15,4 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 - Schéma : `src/lib/db/schema.ts`. Après modification : `npm run db:generate` puis commit du dossier `drizzle/`.
 - Pages : `src/app/(app)/*` — le contenu qui lit la session est toujours dans un `<Suspense>` (Cache Components).
 - Vérifications : `npm run typecheck && npm run lint && npm test`.
+- Hors connexion : les nouvelles ventes et dépenses passent par la file locale (`src/lib/offline/`) puis par `recordCheckout` / `recordExpense`, qui ignorent un renvoi grâce à `checkout_id` / `client_ref`. Après toute modification de `public/sw.js`, incrémentez `VERSION`.

@@ -1,53 +1,49 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireUser } from "@/lib/auth/dal";
+import { z } from "zod";
+import { getCurrentUser, requireUser } from "@/lib/auth/dal";
 import { PAYMENT_METHODS } from "@/lib/constants";
 import * as sales from "@/lib/data/sales";
 import { getDb } from "@/lib/db";
-import { isISODate, today } from "@/lib/dates";
-import { parseAmount, success, type FormState } from "@/lib/forms";
+import { addDays, today } from "@/lib/dates";
+import { fields } from "@/lib/forms";
+import type { CheckoutPayload, SyncResult } from "@/lib/offline/types";
+
+const checkoutSchema = z.object({
+  checkoutId: z.uuid(),
+  shopId: z.uuid(),
+  date: fields.date,
+  paymentMethod: z.enum(PAYMENT_METHODS.map((m) => m.value) as [string, ...string[]]),
+  lines: z
+    .array(
+      z.object({
+        productId: z.uuid(),
+        quantity: z.number().positive().max(1_000_000),
+        unitPrice: z.number().min(0).max(1e11),
+      }),
+    )
+    .min(1)
+    .max(500),
+});
 
 /**
- * The daily sales form posts `qty:<productId>` and `price:<productId>` pairs,
- * one per product row; rows left empty are ignored.
+ * Records one checkout from the sales screen. Called right away when online, or later by the
+ * offline outbox: the checkout id makes a second delivery harmless.
  */
-export async function recordSales(_: FormState, formData: FormData): Promise<FormState> {
-  const user = await requireUser();
-  const date = String(formData.get("date") ?? "");
-  if (!isISODate(date)) return { ok: false, message: "Date invalide." };
-  const method = String(formData.get("paymentMethod") ?? "especes");
-  const paymentMethod = PAYMENT_METHODS.some((m) => m.value === method) ? method : "especes";
-
-  const lines: sales.SaleLine[] = [];
-  const errors: Record<string, string> = {};
-  for (const [key, value] of formData.entries()) {
-    if (!key.startsWith("qty:")) continue;
-    const productId = key.slice(4);
-    const quantity = parseAmount(value);
-    if (quantity == null || quantity === 0) continue;
-    const unitPrice = parseAmount(formData.get(`price:${productId}`));
-    if (Number.isNaN(quantity) || quantity < 0) {
-      errors[key] = "Quantité invalide";
-      continue;
-    }
-    if (unitPrice == null || Number.isNaN(unitPrice) || unitPrice < 0) {
-      errors[`price:${productId}`] = "Prix invalide";
-      continue;
-    }
-    lines.push({ productId, quantity, unitPrice });
+export async function recordCheckout(payload: CheckoutPayload): Promise<SyncResult> {
+  const user = await getCurrentUser();
+  if (!user) return { ok: false, reason: "auth", message: "Session expirée : reconnectez-vous." };
+  if (payload?.shopId !== user.shop.id) return { ok: false, reason: "shop", message: "Saisie d'un autre compte." };
+  const parsed = checkoutSchema.safeParse(payload);
+  // Allow one day of clock difference between the phone and the server.
+  if (!parsed.success || parsed.data.date > addDays(today(user.shop.timezone), 1)) {
+    return { ok: false, reason: "invalid", message: "Vente invalide (date, quantité ou prix)." };
   }
-  if (Object.keys(errors).length) return { ok: false, errors, message: "Vérifiez les quantités et les prix." };
-  if (lines.length === 0) return { ok: false, message: "Indiquez au moins une quantité vendue." };
-
-  const count = await sales.recordSales(await getDb(), user.shop.id, {
-    date,
-    paymentMethod,
-    userId: user.id,
-    lines,
-  });
-  revalidatePath("/", "layout");
-  return success(count > 1 ? `${count} ventes enregistrées.` : "Vente enregistrée.");
+  const { checkoutId, date, paymentMethod, lines } = parsed.data;
+  const count = await sales.recordSales(await getDb(), user.shop.id, { checkoutId, date, paymentMethod, userId: user.id, lines });
+  if (count > 0) revalidatePath("/", "layout");
+  return { ok: true, added: count > 0 };
 }
 
 /** Owners can cancel any sale; employees only their own, on the same day. */

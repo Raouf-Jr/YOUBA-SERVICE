@@ -8,8 +8,14 @@ const inRange = (column: typeof expenses.date | typeof investments.date, range: 
 
 export type ExpenseInput = { date: ISODate; category: string; amount: number; description: string | null };
 
-export async function addExpense(db: DB, shopId: string, userId: string, input: ExpenseInput) {
-  await db.insert(expenses).values({ ...input, shopId, createdById: userId });
+/** With a `clientRef`, adding the same expense twice is a no-op. Returns whether a row was added. */
+export async function addExpense(db: DB, shopId: string, userId: string, input: ExpenseInput & { clientRef?: string }) {
+  const rows = await db
+    .insert(expenses)
+    .values({ ...input, shopId, createdById: userId })
+    .onConflictDoNothing()
+    .returning({ id: expenses.id });
+  return rows.length > 0;
 }
 
 export async function updateExpense(db: DB, shopId: string, id: string, input: ExpenseInput) {

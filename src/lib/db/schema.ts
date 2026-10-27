@@ -3,6 +3,7 @@ import {
   date,
   index,
   integer,
+  uniqueIndex,
   numeric,
   pgTable,
   text,
@@ -117,6 +118,8 @@ export const sales = pgTable(
     unitCost: money("unit_cost"),
     total: money("total").notNull(),
     paymentMethod: text("payment_method").notNull().default("especes"),
+    // Chosen by the device for each checkout: re-sending it (offline sync, lost reply) changes nothing.
+    checkoutId: uuid("checkout_id"),
     createdById: uuid("created_by_id").references(() => users.id, {
       onDelete: "set null",
     }),
@@ -125,6 +128,7 @@ export const sales = pgTable(
   (t) => [
     index("sales_shop_date_idx").on(t.shopId, t.date),
     index("sales_product_idx").on(t.productId),
+    uniqueIndex("sales_checkout_product_idx").on(t.checkoutId, t.productId),
   ],
 );
 
@@ -139,12 +143,17 @@ export const expenses = pgTable(
     category: text("category").notNull(),
     amount: money("amount").notNull(),
     description: text("description"),
+    // Same idea as sales.checkoutId, for expenses typed offline.
+    clientRef: uuid("client_ref"),
     createdById: uuid("created_by_id").references(() => users.id, {
       onDelete: "set null",
     }),
     createdAt: createdAt(),
   },
-  (t) => [index("expenses_shop_date_idx").on(t.shopId, t.date)],
+  (t) => [
+    index("expenses_shop_date_idx").on(t.shopId, t.date),
+    uniqueIndex("expenses_shop_client_ref_idx").on(t.shopId, t.clientRef),
+  ],
 );
 
 export const investments = pgTable(

@@ -2,6 +2,7 @@ import { Receipt } from "lucide-react";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { DateNav } from "@/components/date-nav";
+import { PendingEntries } from "@/components/pending-entries";
 import { PageSkeleton } from "@/components/skeleton";
 import { BarList, Delta } from "@/components/stats";
 import { Badge, Card, CardHeader, EmptyState, PageHeader } from "@/components/ui";
@@ -10,7 +11,7 @@ import { expensesByCategory, listExpenses } from "@/lib/data/expenses";
 import { getDb } from "@/lib/db";
 import { addMonths, endOfMonth, formatDayLong, formatMonthLong, minDate, today } from "@/lib/dates";
 import { change, formatMoney, formatPercent } from "@/lib/format";
-import { ExpenseForm } from "./expense-form";
+import { NewExpenseForm } from "./expense-form";
 import { ExpenseRowActions } from "./expense-row-actions";
 
 export const metadata: Metadata = { title: "Dépenses" };
@@ -73,7 +74,13 @@ async function Expenses({ searchParams }: { searchParams: PageProps<"/depenses">
           <Card>
             <CardHeader title="Nouvelle dépense" />
             <div className="p-5">
-              <ExpenseForm defaultDate={month === currentMonth ? t : minDate(endOfMonth(from), t)} maxDate={t} />
+              <NewExpenseForm
+                defaultDate={month === currentMonth ? t : minDate(endOfMonth(from), t)}
+                serverToday={t}
+                timezone={user.shop.timezone}
+                userId={user.id}
+                shopId={user.shop.id}
+              />
             </div>
           </Card>
           <Card>
@@ -107,6 +114,7 @@ async function Expenses({ searchParams }: { searchParams: PageProps<"/depenses">
               </p>
             </div>
           </div>
+          <PendingEntries userId={user.id} kind="expense" currency={user.shop.currency} filter={month === currentMonth ? undefined : month} />
           {expenses.length === 0 ? (
             <EmptyState icon={<Receipt className="size-5" />} title="Aucune dépense ce mois-ci">
               Loyer, transport, électricité, achats de marchandises… Notez tout ce qui sort de la caisse.

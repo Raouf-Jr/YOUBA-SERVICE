@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Logo } from "@/components/brand";
+import { ClearOfflinePages } from "@/components/service-worker";
 
 export default function AuthLayout({ children }: LayoutProps<"/">) {
   return (
@@ -12,6 +13,7 @@ export default function AuthLayout({ children }: LayoutProps<"/">) {
         <Logo />
       </Link>
       <div className="relative w-full max-w-md">{children}</div>
+      <ClearOfflinePages />
       <p className="relative mt-8 text-center text-xs text-muted">
         Vos données restent privées : chaque boutique ne voit que ses propres chiffres.
       </p>

@@ -13,6 +13,7 @@ Application web de gestion pour petites boutiques : ventes du jour, dépenses, s
 | **Investissements** | Équipement, aménagement, stock de départ… Pourcentage déjà remboursé par les bénéfices et date estimée de remboursement complet. |
 | **Tableau de bord** | Bénéfice net, chiffre d'affaires, dépenses avec évolution vs période précédente ; courbe CA / dépenses / bénéfice (jour, semaine ou mois selon la période) ; meilleurs produits ; dépenses par catégorie ; objectif mensuel ; alertes de stock. Périodes : aujourd'hui, 7 j, 30 j, ce mois, mois dernier, cette année, tout, ou dates libres. |
 | **Rapports** | Compte de résultat simplifié, tableau mois par mois, ventes par produit avec marge, modes de paiement. **Export Excel (CSV)** et **impression / PDF**. |
+| **Hors connexion** | Les ventes et les dépenses se saisissent même sans réseau : elles sont gardées sur le téléphone (y compris si l'application est fermée) et envoyées automatiquement au retour de la connexion, sans risque de doublon. Les pages Ventes et Dépenses s'ouvrent sans réseau ; un bandeau indique l'état et le nombre de saisies en attente. |
 | **Application mobile** | Installable sur l'écran d'accueil (PWA), mode sombre automatique, interface en français, devises F CFA, €, $, etc. |
 
 ## Technique
@@ -20,6 +21,7 @@ Application web de gestion pour petites boutiques : ventes du jour, dépenses, s
 - **Next.js 16** (App Router, Server Components, Server Actions, Cache Components) + **TypeScript** + **Tailwind CSS 4**
 - **PostgreSQL** via **Drizzle ORM** ; en local, base embarquée **PGlite** (aucune installation)
 - Authentification maison : mots de passe hachés (scrypt), sessions en base, cookie `httpOnly`
+- Hors connexion : service worker (`public/sw.js`) pour ouvrir les pages, file d'attente locale (`src/lib/offline/`) pour les saisies, identifiant unique par saisie côté serveur pour ignorer les renvois
 - Graphiques en SVG faits main (pas de bibliothèque lourde), palette de couleurs validée pour le daltonisme
 - Tests : **Vitest** (unitaires + intégration sur une vraie base Postgres en mémoire)
 
@@ -88,6 +90,8 @@ DATABASE_URL="postgresql://…" npm run user:reset-password -- adresse@exemple.c
 ### 4. Première utilisation
 
 Ouvrez l'adresse du site, cliquez sur **Créer ma boutique**, puis suivez les 4 étapes affichées sur le tableau de bord. Sur téléphone : menu du navigateur → **Ajouter à l'écran d'accueil**.
+
+Pour le mode hors connexion : ouvrez une fois les pages **Ventes** et **Dépenses** avec du réseau (c'est fait automatiquement après la connexion). Ensuite, même sans réseau, elles s'ouvrent et acceptent les saisies.
 
 ## Structure
 

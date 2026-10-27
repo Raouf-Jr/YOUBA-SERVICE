@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import { AppNav } from "@/components/app-nav";
+import { OfflineSync } from "@/components/offline-sync";
 import { requireUser } from "@/lib/auth/dal";
 
 export default function AppLayout({ children }: LayoutProps<"/">) {
@@ -15,5 +16,10 @@ export default function AppLayout({ children }: LayoutProps<"/">) {
 
 async function Nav() {
   const user = await requireUser();
-  return <AppNav role={user.role} shopName={user.shop.name} userName={user.name} />;
+  return (
+    <>
+      <AppNav role={user.role} shopName={user.shop.name} userName={user.name} userId={user.id} />
+      <OfflineSync userId={user.id} />
+    </>
+  );
 }

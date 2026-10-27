@@ -14,9 +14,10 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
-import { logout } from "@/lib/actions/auth";
+import { useOffline } from "next/offline";
+import { useState, type MouseEvent } from "react";
 import { Logo } from "./brand";
+import { LogoutButton } from "./logout-button";
 import { cx } from "./ui";
 
 type Role = "owner" | "staff";
@@ -36,8 +37,27 @@ const MOBILE_TABS: Record<Role, string[]> = {
   staff: ["/ventes", "/depenses", "/produits"],
 };
 
-export function AppNav({ role, shopName, userName }: { role?: Role; shopName?: string; userName?: string }) {
+export function AppNav({
+  role,
+  shopName,
+  userName,
+  userId,
+}: {
+  role?: Role;
+  shopName?: string;
+  userName?: string;
+  userId?: string;
+}) {
   const pathname = usePathname();
+  const offline = useOffline();
+  // Offline, a full page load lets the service worker serve the copy saved on the device,
+  // where an in-app navigation would wait for the network.
+  const go = offline
+    ? (event: MouseEvent<HTMLAnchorElement>) => {
+        event.preventDefault();
+        window.location.assign(event.currentTarget.href);
+      }
+    : undefined;
   // The sheet remembers the page it was opened on, so navigating closes it.
   const [sheetFor, setSheetFor] = useState<string | null>(null);
   const sheetOpen = sheetFor === pathname;
@@ -60,6 +80,7 @@ export function AppNav({ role, shopName, userName }: { role?: Role; shopName?: s
             <Link
               key={href}
               href={href}
+              onClick={go}
               aria-current={isActive(href) ? "page" : undefined}
               className={cx(
                 "group flex h-10 items-center gap-3 rounded-xl px-3 text-[0.9375rem] font-medium transition-colors",
@@ -78,16 +99,13 @@ export function AppNav({ role, shopName, userName }: { role?: Role; shopName?: s
               <p className="truncate text-sm font-medium text-ink">{userName}</p>
               <p className="text-xs text-muted">{role === "owner" ? "Propriétaire" : "Employé"}</p>
             </div>
-            <form action={logout}>
-              <button
-                type="submit"
-                title="Se déconnecter"
-                aria-label="Se déconnecter"
-                className="inline-flex size-8 items-center justify-center rounded-lg text-muted hover:bg-subtle hover:text-ink"
-              >
-                <LogOut className="size-4" />
-              </button>
-            </form>
+            <LogoutButton
+              userId={userId}
+              label="Se déconnecter"
+              className="inline-flex size-8 items-center justify-center rounded-lg text-muted hover:bg-subtle hover:text-ink"
+            >
+              <LogOut className="size-4" />
+            </LogoutButton>
           </div>
         )}
       </aside>
@@ -110,6 +128,7 @@ export function AppNav({ role, shopName, userName }: { role?: Role; shopName?: s
             <Link
               key={href}
               href={href}
+              onClick={go}
               aria-current={isActive(href) ? "page" : undefined}
               className={cx(
                 "flex flex-1 flex-col items-center justify-center gap-1 text-[0.6875rem] font-medium transition-colors",
@@ -172,6 +191,7 @@ export function AppNav({ role, shopName, userName }: { role?: Role; shopName?: s
                 <Link
                   key={href}
                   href={href}
+                  onClick={go}
                   className={cx(
                     "flex h-12 items-center gap-3 rounded-xl px-3 font-medium",
                     isActive(href) ? "bg-accent-soft text-accent-text" : "text-ink hover:bg-subtle",
@@ -181,12 +201,13 @@ export function AppNav({ role, shopName, userName }: { role?: Role; shopName?: s
                   {label}
                 </Link>
               ))}
-              <form action={logout}>
-                <button type="submit" className="flex h-12 w-full items-center gap-3 rounded-xl px-3 font-medium text-bad hover:bg-bad-soft">
-                  <LogOut className="size-5" />
-                  Se déconnecter
-                </button>
-              </form>
+              <LogoutButton
+                userId={userId}
+                className="flex h-12 w-full items-center gap-3 rounded-xl px-3 font-medium text-bad hover:bg-bad-soft"
+              >
+                <LogOut className="size-5" />
+                Se déconnecter
+              </LogoutButton>
             </div>
           </div>
         </div>
