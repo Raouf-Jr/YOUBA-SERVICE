@@ -2,7 +2,7 @@
 
 import { Pencil, Trash2 } from "lucide-react";
 import { useActionState, useState } from "react";
-import { ConfirmAction, FormMessage, Modal, SubmitButton, useOnSuccess } from "@/components/form-bits";
+import { ActionForm, ConfirmAction, FormMessage, Modal, SubmitButton, useOnSuccess } from "@/components/form-bits";
 import { Field, IconButton, Input, Select } from "@/components/ui";
 import { deleteInvestment, saveInvestment } from "@/lib/actions/expenses";
 import { INVESTMENT_CATEGORIES } from "@/lib/constants";
@@ -27,7 +27,7 @@ export function InvestmentForm({
   if (investment && !categories.includes(investment.category)) categories.push(investment.category);
 
   return (
-    <form key={formKey} action={action} className="flex flex-col gap-4">
+    <ActionForm key={formKey} action={action} className="flex flex-col gap-4">
       {investment && <input type="hidden" name="id" value={investment.id} />}
       <Field label="Libellé" htmlFor={`label-${id}`} error={e.label}>
         <Input id={`label-${id}`} name="label" defaultValue={investment?.label} required maxLength={80} placeholder="Ex. Congélateur, étagères, travaux…" />
@@ -51,7 +51,7 @@ export function InvestmentForm({
       <SubmitButton size="lg" className="w-full">
         {investment ? "Enregistrer les modifications" : "Ajouter l'investissement"}
       </SubmitButton>
-    </form>
+    </ActionForm>
   );
 }
 

@@ -3,7 +3,7 @@
 import { Minus, Package, Plus, Search, TriangleAlert } from "lucide-react";
 import Link from "next/link";
 import { useActionState, useMemo, useState } from "react";
-import { FormMessage, SubmitButton, useOnSuccess } from "@/components/form-bits";
+import { ActionForm, FormMessage, SubmitButton, useOnSuccess } from "@/components/form-bits";
 import { EmptyState, cx, inputClass } from "@/components/ui";
 import { recordSales } from "@/lib/actions/sales";
 import { PAYMENT_METHODS } from "@/lib/constants";
@@ -90,7 +90,7 @@ export function SalesEntry({
   }
 
   return (
-    <form action={action}>
+    <ActionForm action={action}>
       <input type="hidden" name="date" value={date} />
       <input type="hidden" name="paymentMethod" value={method} />
 
@@ -238,6 +238,6 @@ export function SalesEntry({
           </SubmitButton>
         </div>
       </div>
-    </form>
+    </ActionForm>
   );
 }

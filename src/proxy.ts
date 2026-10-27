@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 const SESSION_COOKIE = "youba_session";
-const PUBLIC_PATHS = ["/", "/connexion", "/inscription"];
+const PUBLIC_PATHS = ["/", "/connexion", "/inscription", "/mot-de-passe-oublie", "/reinitialiser", "/hors-ligne"];
 
 /**
  * Optimistic check only: bounces visitors without a session cookie to the login page.

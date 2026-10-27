@@ -1,11 +1,11 @@
 "use client";
 
-import { Trash2, UserPlus } from "lucide-react";
+import { KeyRound, Trash2, UserPlus } from "lucide-react";
 import { useActionState, useState } from "react";
-import { ConfirmAction, FormMessage, Modal, SubmitButton, useOnSuccess } from "@/components/form-bits";
+import { ActionForm, ConfirmAction, FormMessage, Modal, SubmitButton, useOnSuccess } from "@/components/form-bits";
 import { PasswordInput } from "@/components/password-input";
-import { Badge, Button, Field, Input, Select } from "@/components/ui";
-import { addStaff, changePassword, removeStaff, saveProfile, saveShop } from "@/lib/actions/settings";
+import { Badge, Button, Field, IconButton, Input, Select } from "@/components/ui";
+import { addStaff, changePassword, removeStaff, resetStaffPassword, saveProfile, saveShop } from "@/lib/actions/settings";
 import { CURRENCIES, TIMEZONES } from "@/lib/constants";
 
 export function ShopForm({
@@ -17,7 +17,7 @@ export function ShopForm({
   const e = state.errors ?? {};
   const zones: string[] = TIMEZONES.includes(shop.timezone as never) ? [...TIMEZONES] : [shop.timezone, ...TIMEZONES];
   return (
-    <form action={action} className="grid gap-4 sm:grid-cols-2">
+    <ActionForm action={action} className="grid gap-4 sm:grid-cols-2">
       <Field label="Nom de la boutique" htmlFor="shop-name" error={e.name} className="sm:col-span-2">
         <Input id="shop-name" name="name" defaultValue={shop.name} required maxLength={80} />
       </Field>
@@ -52,14 +52,14 @@ export function ShopForm({
         <FormMessage state={state} />
         <SubmitButton className="self-start">Enregistrer</SubmitButton>
       </div>
-    </form>
+    </ActionForm>
   );
 }
 
 export function ProfileForm({ name, email }: { name: string; email: string }) {
   const [state, action] = useActionState(saveProfile, {});
   return (
-    <form action={action} className="grid gap-4 sm:grid-cols-2">
+    <ActionForm action={action} className="grid gap-4 sm:grid-cols-2">
       <Field label="Votre nom" htmlFor="profile-name" error={state.errors?.name}>
         <Input id="profile-name" name="name" defaultValue={name} required maxLength={80} autoComplete="name" />
       </Field>
@@ -70,7 +70,7 @@ export function ProfileForm({ name, email }: { name: string; email: string }) {
         <FormMessage state={state} />
         <SubmitButton className="self-start">Enregistrer</SubmitButton>
       </div>
-    </form>
+    </ActionForm>
   );
 }
 
@@ -81,7 +81,7 @@ export function PasswordForm() {
   const e = state.errors ?? {};
   return (
     <div>
-      <form key={key} action={action} className="grid gap-4 sm:grid-cols-3">
+      <ActionForm key={key} action={action} className="grid gap-4 sm:grid-cols-3">
         <Field label="Mot de passe actuel" htmlFor="pw-current" error={e.current}>
           <PasswordInput id="pw-current" name="current" autoComplete="current-password" required />
         </Field>
@@ -94,7 +94,7 @@ export function PasswordForm() {
         <div className="sm:col-span-3">
           <SubmitButton>Changer le mot de passe</SubmitButton>
         </div>
-      </form>
+      </ActionForm>
       <FormMessage state={state} className="mt-3" />
     </div>
   );
@@ -115,6 +115,19 @@ export function TeamManager({ members, currentUserId }: { members: Member[]; cur
               <p className="truncate text-xs text-muted">{m.email}</p>
             </div>
             <Badge tone={m.role === "owner" ? "accent" : "neutral"}>{m.role === "owner" ? "Propriétaire" : "Employé"}</Badge>
+            {m.role === "staff" && (
+              <Modal
+                title="Nouveau mot de passe"
+                description={`Pour ${m.name}. Il sera déconnecté de ses appareils.`}
+                trigger={(open) => (
+                  <IconButton label="Changer son mot de passe" onClick={open}>
+                    <KeyRound />
+                  </IconButton>
+                )}
+              >
+                {(close) => <StaffPasswordForm userId={m.id} onDone={close} />}
+              </Modal>
+            )}
             {m.role === "staff" ? (
               <ConfirmAction
                 action={removeStaff.bind(null, m.id)}
@@ -144,12 +157,29 @@ export function TeamManager({ members, currentUserId }: { members: Member[]; cur
   );
 }
 
+function StaffPasswordForm({ userId, onDone }: { userId: string; onDone: () => void }) {
+  const [state, action] = useActionState(resetStaffPassword, {});
+  useOnSuccess(state, () => setTimeout(onDone, 1800));
+  return (
+    <ActionForm action={action} className="flex flex-col gap-4">
+      <input type="hidden" name="userId" value={userId} />
+      <Field label="Nouveau mot de passe" htmlFor={`staff-pw-${userId}`} error={state.errors?.password} hint="Au moins 8 caractères.">
+        <PasswordInput id={`staff-pw-${userId}`} name="password" minLength={8} required autoComplete="new-password" autoFocus />
+      </Field>
+      <FormMessage state={state} />
+      <SubmitButton size="lg" className="w-full">
+        Enregistrer
+      </SubmitButton>
+    </ActionForm>
+  );
+}
+
 function StaffForm({ onDone }: { onDone: () => void }) {
   const [state, action] = useActionState(addStaff, {});
   useOnSuccess(state, onDone);
   const e = state.errors ?? {};
   return (
-    <form action={action} className="flex flex-col gap-4">
+    <ActionForm action={action} className="flex flex-col gap-4">
       <Field label="Nom" htmlFor="staff-name" error={e.name}>
         <Input id="staff-name" name="name" required maxLength={80} autoFocus />
       </Field>
@@ -163,6 +193,6 @@ function StaffForm({ onDone }: { onDone: () => void }) {
       <SubmitButton size="lg" className="w-full">
         Créer le compte
       </SubmitButton>
-    </form>
+    </ActionForm>
   );
 }

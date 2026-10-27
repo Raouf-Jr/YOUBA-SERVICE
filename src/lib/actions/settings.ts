@@ -85,6 +85,20 @@ export async function addStaff(_: FormState, formData: FormData): Promise<FormSt
   return success(`Compte créé pour ${data.name}. Communiquez-lui son e-mail et son mot de passe.`);
 }
 
+const staffPasswordSchema = z.object({
+  userId: z.string().uuid(),
+  password: z.string().min(8, "Au moins 8 caractères").max(200),
+});
+
+export async function resetStaffPassword(_: FormState, formData: FormData): Promise<FormState> {
+  const user = await requireOwner();
+  const { data, errors } = parseForm(staffPasswordSchema, formData);
+  if (!data) return invalid(errors);
+  const staff = await account.resetStaffPassword(await getDb(), user.shop.id, data.userId, data.password);
+  if (!staff) return { ok: false, message: "Compte introuvable." };
+  return success(`Nouveau mot de passe enregistré pour ${staff.name}. Communiquez-le-lui.`);
+}
+
 export async function removeStaff(userId: string) {
   const user = await requireOwner();
   await account.removeStaff(await getDb(), user.shop.id, userId);

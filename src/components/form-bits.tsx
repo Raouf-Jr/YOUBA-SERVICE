@@ -1,10 +1,40 @@
 "use client";
 
 import { CircleCheck, TriangleAlert } from "lucide-react";
-import { useEffect, useRef, useState, useTransition, type ReactNode } from "react";
+import { createContext, use, useEffect, useRef, useState, useTransition, type ComponentProps, type ReactNode } from "react";
 import { useFormStatus } from "react-dom";
 import type { FormState } from "@/lib/forms";
 import { Button, buttonClass, cx } from "./ui";
+
+const PendingContext = createContext(false);
+
+/**
+ * A <form> for useActionState actions that keeps what the user typed when the server
+ * answers with an error (React's built-in form actions clear every field afterwards).
+ */
+export function ActionForm({
+  action,
+  children,
+  ...props
+}: Omit<ComponentProps<"form">, "action" | "onSubmit"> & { action: (formData: FormData) => void }) {
+  const [pending, startTransition] = useTransition();
+  return (
+    <PendingContext value={pending}>
+      <form
+        {...props}
+        aria-busy={pending || undefined}
+        onSubmit={(event) => {
+          event.preventDefault();
+          if (pending) return;
+          const formData = new FormData(event.currentTarget);
+          startTransition(() => action(formData));
+        }}
+      >
+        {children}
+      </form>
+    </PendingContext>
+  );
+}
 
 export function SubmitButton({
   children,
@@ -19,7 +49,8 @@ export function SubmitButton({
   variant?: Parameters<typeof buttonClass>[0];
   size?: Parameters<typeof buttonClass>[1];
 }) {
-  const { pending } = useFormStatus();
+  const status = useFormStatus();
+  const pending = status.pending || use(PendingContext);
   return (
     <Button type="submit" disabled={pending} variant={variant} size={size} className={className} aria-busy={pending}>
       {pending ? (

@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useSyncExternalStore } from "react";
-import { FormMessage, SubmitButton } from "@/components/form-bits";
+import { ActionForm, FormMessage, SubmitButton } from "@/components/form-bits";
 import { PasswordInput } from "@/components/password-input";
 import { Field, Input, Select } from "@/components/ui";
 import { signup } from "@/lib/actions/auth";
@@ -17,7 +17,7 @@ export function SignupForm() {
   const e = state.errors ?? {};
 
   return (
-    <form action={action} className="flex flex-col gap-4">
+    <ActionForm action={action} className="flex flex-col gap-4">
       <Field label="Nom de la boutique" htmlFor="shopName" error={e.shopName}>
         <Input id="shopName" name="shopName" placeholder="Ex. Boutique Youba" required autoFocus maxLength={80} />
       </Field>
@@ -44,6 +44,6 @@ export function SignupForm() {
       <SubmitButton size="lg" className="mt-1 w-full" pendingLabel="Création…">
         Créer ma boutique
       </SubmitButton>
-    </form>
+    </ActionForm>
   );
 }

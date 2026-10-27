@@ -6,7 +6,7 @@ Application web de gestion pour petites boutiques : ventes du jour, dépenses, s
 
 | Module | Ce qu'il fait |
 | --- | --- |
-| **Comptes** | Inscription / connexion par e-mail. Chaque boutique ne voit que ses données. Comptes **employés** (saisie des ventes, dépenses et stock, sans accès aux bénéfices ni aux rapports). |
+| **Comptes** | Inscription / connexion par e-mail. Chaque boutique ne voit que ses données. Comptes **employés** (saisie des ventes, dépenses et stock, sans accès aux bénéfices ni aux rapports). **Mot de passe oublié** par e-mail (lien valable 1 h, à usage unique) ; le propriétaire peut aussi redéfinir le mot de passe d'un employé. |
 | **Ventes du jour** | Liste des produits avec boutons − / +, prix modifiable (remise), mode de paiement (espèces, Mobile Money, carte…), total en direct. Historique du jour, annulation d'une vente (le stock est remis), navigation par date, mini-graphe des 7 derniers jours. |
 | **Produits & stock** | Catalogue avec catégorie, unité, prix de vente / d'achat et marge. Suivi du stock, seuil d'alerte, réapprovisionnement (enregistré automatiquement en dépense « Achat de marchandises »), inventaire, archivage. Valeur du stock. |
 | **Dépenses** | Catégories (loyer, transport, électricité…), vue par mois, comparaison avec le mois précédent, répartition par catégorie, modification / suppression. |
@@ -66,7 +66,26 @@ L'offre gratuite (1 Go de stockage) suffit largement pour des années de ventes 
 
 L'offre gratuite de Netlify autorise un usage commercial. Vercel fonctionne aussi (importez le dépôt, ajoutez `DATABASE_URL`, commande de build `npm run build:deploy`), mais son offre gratuite « Hobby » est réservée à un usage personnel non commercial.
 
-### 3. Première utilisation
+### 3. E-mails (mot de passe oublié) — facultatif mais recommandé
+
+Sans cette étape tout fonctionne, sauf l'envoi du lien « Mot de passe oublié » : le site invite alors à contacter le propriétaire de la boutique ou l'administrateur.
+
+Deux options gratuites, sans nom de domaine à acheter :
+
+- **Brevo** ([brevo.com](https://www.brevo.com/free-smtp-server/), jusqu'à 300 e-mails par jour) : créez un compte, validez l'adresse d'expédition (menu *Expéditeurs*), puis dans *SMTP & API* créez une **clé SMTP**.
+  `SMTP_HOST=smtp-relay.brevo.com`, `SMTP_PORT=587`, `SMTP_USER=` l'identifiant SMTP affiché par Brevo, `SMTP_PASS=` la clé SMTP, `MAIL_FROM="YOUBA SERVICE <votre-adresse-validée>"`.
+- **Gmail** : activez la validation en deux étapes du compte Google, créez un **mot de passe d'application**, puis
+  `SMTP_HOST=smtp.gmail.com`, `SMTP_PORT=465`, `SMTP_USER=` votre adresse Gmail, `SMTP_PASS=` le mot de passe d'application.
+
+Ajoutez ces variables dans Netlify (*Environment variables*) puis redéployez. Les réglages exacts peuvent évoluer : vérifiez-les dans l'interface du fournisseur.
+
+**Dépannage administrateur** : pour changer le mot de passe d'un compte sans e-mail, lancez depuis votre ordinateur, avec `DATABASE_URL` de production :
+
+```bash
+DATABASE_URL="postgresql://…" npm run user:reset-password -- adresse@exemple.com NouveauMotDePasse
+```
+
+### 4. Première utilisation
 
 Ouvrez l'adresse du site, cliquez sur **Créer ma boutique**, puis suivez les 4 étapes affichées sur le tableau de bord. Sur téléphone : menu du navigateur → **Ajouter à l'écran d'accueil**.
 

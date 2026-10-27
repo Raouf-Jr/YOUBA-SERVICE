@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { FormMessage, SubmitButton, useOnSuccess } from "@/components/form-bits";
+import { ActionForm, FormMessage, SubmitButton, useOnSuccess } from "@/components/form-bits";
 import { Checkbox, Field, Input, Textarea } from "@/components/ui";
 import { adjustStock, restock, saveProduct } from "@/lib/actions/products";
 import { UNITS } from "@/lib/constants";
@@ -35,7 +35,7 @@ export function ProductForm({
   const margin = s > 0 && c != null && !Number.isNaN(c) ? s - c : null;
 
   return (
-    <form action={action} className="flex flex-col gap-4">
+    <ActionForm action={action} className="flex flex-col gap-4">
       {product && <input type="hidden" name="id" value={product.id} />}
       <Field label="Nom du produit" htmlFor="name" error={e.name}>
         <Input id="name" name="name" defaultValue={product?.name} required maxLength={80} autoFocus placeholder="Ex. Riz parfumé 25 kg" />
@@ -100,7 +100,7 @@ export function ProductForm({
       <SubmitButton size="lg" className="w-full">
         {product ? "Enregistrer les modifications" : "Ajouter le produit"}
       </SubmitButton>
-    </form>
+    </ActionForm>
   );
 }
 
@@ -125,7 +125,7 @@ export function RestockForm({
   const total = q > 0 && c > 0 ? q * c : 0;
 
   return (
-    <form action={action} className="flex flex-col gap-4">
+    <ActionForm action={action} className="flex flex-col gap-4">
       <input type="hidden" name="productId" value={product.id} />
       <div className="grid grid-cols-2 gap-3">
         <Field label={`Quantité reçue (${product.unit})`} htmlFor="quantity" error={e.quantity}>
@@ -160,7 +160,7 @@ export function RestockForm({
       <SubmitButton size="lg" className="w-full">
         Ajouter au stock
       </SubmitButton>
-    </form>
+    </ActionForm>
   );
 }
 
@@ -173,7 +173,7 @@ export function AdjustForm({ product, onDone }: { product: Product; onDone: () =
   const delta = n != null && !Number.isNaN(n) ? n - product.stock : 0;
 
   return (
-    <form action={action} className="flex flex-col gap-4">
+    <ActionForm action={action} className="flex flex-col gap-4">
       <input type="hidden" name="productId" value={product.id} />
       <p className="text-sm text-ink-2">
         Stock enregistré : <strong className="text-ink">{formatNumber(product.stock)} {product.unit}</strong>. Comptez ce qu&apos;il
@@ -196,6 +196,6 @@ export function AdjustForm({ product, onDone }: { product: Product; onDone: () =
       <SubmitButton size="lg" className="w-full">
         Enregistrer l&apos;inventaire
       </SubmitButton>
-    </form>
+    </ActionForm>
   );
 }

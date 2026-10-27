@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { FormMessage, SubmitButton, useOnSuccess } from "@/components/form-bits";
+import { ActionForm, FormMessage, SubmitButton, useOnSuccess } from "@/components/form-bits";
 import { Field, Input, cx } from "@/components/ui";
 import { saveExpense } from "@/lib/actions/expenses";
 import { EXPENSE_CATEGORIES } from "@/lib/constants";
@@ -36,7 +36,7 @@ export function ExpenseForm({
   const categories: string[] = EXPENSE_CATEGORIES.includes(category as never) ? [...EXPENSE_CATEGORIES] : [...EXPENSE_CATEGORIES, category];
 
   return (
-    <form key={formKey} action={action} className="flex flex-col gap-4">
+    <ActionForm key={formKey} action={action} className="flex flex-col gap-4">
       {expense && <input type="hidden" name="id" value={expense.id} />}
       <fieldset className="min-w-0">
         <legend className="mb-2 text-sm font-medium text-ink-2">Catégorie</legend>
@@ -94,6 +94,6 @@ export function ExpenseForm({
       <SubmitButton size="lg" className="w-full">
         {expense ? "Enregistrer les modifications" : "Ajouter la dépense"}
       </SubmitButton>
-    </form>
+    </ActionForm>
   );
 }

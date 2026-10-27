@@ -1,7 +1,7 @@
 import { and, asc, eq, ne } from "drizzle-orm";
 import { hashPassword } from "@/lib/auth/password";
 import type { DB } from "@/lib/db/client";
-import { shops, users } from "@/lib/db/schema";
+import { sessions, shops, users } from "@/lib/db/schema";
 
 export const normalizeEmail = (email: string) => email.trim().toLowerCase();
 
@@ -64,6 +64,20 @@ export async function addStaff(db: DB, shopId: string, input: { name: string; em
     email: normalizeEmail(input.email),
     passwordHash: await hashPassword(input.password),
     role: "staff",
+  });
+}
+
+/** Sets a staff member's password (chosen by the owner) and signs them out everywhere. */
+export async function resetStaffPassword(db: DB, shopId: string, userId: string, password: string) {
+  const passwordHash = await hashPassword(password);
+  return db.transaction(async (tx) => {
+    const [user] = await tx
+      .update(users)
+      .set({ passwordHash })
+      .where(and(eq(users.shopId, shopId), eq(users.id, userId), eq(users.role, "staff")))
+      .returning({ id: users.id, name: users.name });
+    if (user) await tx.delete(sessions).where(eq(sessions.userId, user.id));
+    return user ?? null;
   });
 }
 
