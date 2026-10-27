@@ -1,0 +1,7 @@
+# Netlify détecte Next.js automatiquement (adaptateur OpenNext).
+# Les migrations de la base sont appliquées avant chaque build.
+[build]
+  command = "npm run build:deploy"
+
+[build.environment]
+  NODE_VERSION = "22"
