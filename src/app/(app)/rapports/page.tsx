@@ -110,7 +110,7 @@ async function Reports({ searchParams }: { searchParams: PageProps<"/rapports">[
         </Card>
       ) : (
         <div className="flex flex-col gap-4">
-          <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
             <Card>
               <CardHeader title="Compte de résultat simplifié" />
               <dl className="tabular px-5 pt-4 pb-5 text-sm">
@@ -229,7 +229,7 @@ async function Reports({ searchParams }: { searchParams: PageProps<"/rapports">[
             </div>
           </Card>
 
-          <div className="grid gap-4 lg:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
             <Card>
               <CardHeader title="Dépenses par catégorie" />
               <div className="p-3 sm:p-4">

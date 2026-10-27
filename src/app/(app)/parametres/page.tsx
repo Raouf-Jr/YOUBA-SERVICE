@@ -68,7 +68,7 @@ async function Settings() {
 
 function Section({ title, description, children }: { title: string; description?: string; children: ReactNode }) {
   return (
-    <Card className="grid gap-4 p-5 sm:p-6 lg:grid-cols-[16rem_minmax(0,1fr)] lg:gap-8">
+    <Card className="grid grid-cols-1 gap-4 p-5 sm:p-6 lg:grid-cols-[16rem_minmax(0,1fr)] lg:gap-8">
       <div>
         <h2 className="font-semibold text-ink">{title}</h2>
         {description && <p className="mt-1 text-sm text-muted">{description}</p>}

@@ -38,7 +38,7 @@ export function ExpenseForm({
   return (
     <form key={formKey} action={action} className="flex flex-col gap-4">
       {expense && <input type="hidden" name="id" value={expense.id} />}
-      <fieldset>
+      <fieldset className="min-w-0">
         <legend className="mb-2 text-sm font-medium text-ink-2">Catégorie</legend>
         <div className="flex flex-wrap gap-1.5">
           {categories.map((c) => (

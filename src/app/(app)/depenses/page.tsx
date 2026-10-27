@@ -68,7 +68,7 @@ async function Expenses({ searchParams }: { searchParams: PageProps<"/depenses">
         }
       />
 
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.25fr)] lg:items-start">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.25fr)] lg:items-start">
         <div className="flex flex-col gap-4">
           <Card>
             <CardHeader title="Nouvelle dépense" />

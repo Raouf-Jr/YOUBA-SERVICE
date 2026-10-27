@@ -181,7 +181,7 @@ async function Dashboard({ searchParams }: { searchParams: PageProps<"/tableau-d
         </div>
       </Card>
 
-      <div className="mt-4 grid gap-4 lg:grid-cols-2">
+      <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
         <Card>
           <CardHeader
             title="Meilleurs produits"
@@ -236,7 +236,7 @@ async function Dashboard({ searchParams }: { searchParams: PageProps<"/tableau-d
         </Card>
       </div>
 
-      <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+      <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
         <GoalCard user={user} monthRevenue={monthTotals.revenue} todayISO={t} />
         <InvestmentCard money={money} {...investment} />
         <StockCard items={lowStock} />
