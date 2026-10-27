@@ -24,7 +24,7 @@ export async function connect(options: { dataDir?: string } = {}): Promise<Conne
     const { default: postgres } = await import("postgres");
     const { drizzle } = await import("drizzle-orm/postgres-js");
     // prepare:false keeps us compatible with transaction poolers (Neon, Supabase).
-    const client = postgres(url, { prepare: false, max: 5, idle_timeout: 20 });
+    const client = postgres(url, { prepare: false, max: 5, idle_timeout: 20, onnotice: () => {} });
     return {
       db: drizzle(client, { schema }) as unknown as DB,
       kind: "postgres",

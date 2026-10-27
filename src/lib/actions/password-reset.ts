@@ -4,8 +4,10 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { getAppUrl } from "@/lib/app-url";
 import { createSession } from "@/lib/auth/session";
-import { findUserByEmail } from "@/lib/data/account";
+import { clientIp } from "@/lib/client-ip";
+import { findUserByEmail, normalizeEmail } from "@/lib/data/account";
 import { consumeResetToken, createResetToken, RESET_TOKEN_MINUTES } from "@/lib/data/password-reset";
+import { hitLimit, LIMITS, tooManyAttemptsMessage } from "@/lib/data/rate-limit";
 import { getDb } from "@/lib/db";
 import { invalid, parseForm, type FormState } from "@/lib/forms";
 import { isMailConfigured, sendMail } from "@/lib/mail";
@@ -27,7 +29,12 @@ export async function requestPasswordReset(_: FormState, formData: FormData): Pr
   }
 
   const db = await getDb();
-  const user = await findUserByEmail(db, data.email);
+  const byIp = await hitLimit(db, `reset:ip:${await clientIp()}`, LIMITS.resetPerIp);
+  if (byIp.blocked) return { ok: false, message: tooManyAttemptsMessage(byIp) };
+  // Per address, extra requests are silently dropped (same answer, no new e-mail).
+  const byEmail = await hitLimit(db, `reset:email:${normalizeEmail(data.email)}`, LIMITS.resetPerEmail);
+
+  const user = byEmail.blocked ? null : await findUserByEmail(db, data.email);
   if (user) {
     const token = await createResetToken(db, user.id);
     const url = `${await getAppUrl()}/reinitialiser?token=${token}`;

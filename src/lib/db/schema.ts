@@ -2,6 +2,7 @@ import {
   boolean,
   date,
   index,
+  integer,
   numeric,
   pgTable,
   text,
@@ -69,6 +70,13 @@ export const passwordResetTokens = pgTable(
   },
   (t) => [index("password_reset_tokens_user_idx").on(t.userId)],
 );
+
+/** Fixed-window counters for brute-force protection (login, sign-up, reset e-mails…). */
+export const rateLimits = pgTable("rate_limits", {
+  key: text("key").primaryKey(),
+  count: integer("count").notNull(),
+  resetAt: timestamp("reset_at", { withTimezone: true }).notNull(),
+});
 
 export const products = pgTable(
   "products",

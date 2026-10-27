@@ -6,7 +6,9 @@ import { z } from "zod";
 import { hashPassword, verifyPassword } from "@/lib/auth/password";
 import { createSession, destroySession } from "@/lib/auth/session";
 import { CURRENCIES } from "@/lib/constants";
-import { createShopWithOwner, findUserByEmail } from "@/lib/data/account";
+import { clientIp } from "@/lib/client-ip";
+import { createShopWithOwner, findUserByEmail, normalizeEmail } from "@/lib/data/account";
+import { checkLimit, clearLimit, hitLimit, LIMITS, tooManyAttemptsMessage } from "@/lib/data/rate-limit";
 import { getDb } from "@/lib/db";
 import { fields, invalid, parseForm, type FormState } from "@/lib/forms";
 
@@ -36,6 +38,8 @@ export async function signup(_: FormState, formData: FormData): Promise<FormStat
   if (!data) return invalid(errors);
 
   const db = await getDb();
+  const limit = await hitLimit(db, `signup:ip:${await clientIp()}`, LIMITS.signupPerIp);
+  if (limit.blocked) return { ok: false, message: tooManyAttemptsMessage(limit) };
   if (await findUserByEmail(db, data.email)) {
     return invalid({ email: "Un compte existe déjà avec cette adresse." });
   }
@@ -58,11 +62,21 @@ export async function login(_: FormState, formData: FormData): Promise<FormState
   if (!data) return invalid(errors);
 
   const db = await getDb();
+  // Failed attempts are counted per account and per IP; a success clears the account's counter.
+  const emailKey = `login:email:${normalizeEmail(data.email)}`;
+  const ipKey = `login:ip:${await clientIp()}`;
+  const blocked = (
+    await Promise.all([checkLimit(db, emailKey, LIMITS.loginPerEmail), checkLimit(db, ipKey, LIMITS.loginPerIp)])
+  ).find((s) => s.blocked);
+  if (blocked) return { ok: false, message: tooManyAttemptsMessage(blocked) };
+
   const user = await findUserByEmail(db, data.email);
   const valid = await verifyPassword(data.password, user?.passwordHash ?? (await getDummyHash()));
   if (!user || !valid) {
+    await Promise.all([hitLimit(db, emailKey, LIMITS.loginPerEmail), hitLimit(db, ipKey, LIMITS.loginPerIp)]);
     return { ok: false, message: "E-mail ou mot de passe incorrect." };
   }
+  await clearLimit(db, emailKey);
   await createSession(db, user.id);
   redirect(user.role === "owner" ? "/tableau-de-bord" : "/ventes");
 }

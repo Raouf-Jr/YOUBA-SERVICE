@@ -7,6 +7,7 @@ import { verifyPassword } from "@/lib/auth/password";
 import { destroyOtherSessions } from "@/lib/auth/session";
 import { CURRENCIES } from "@/lib/constants";
 import * as account from "@/lib/data/account";
+import { checkLimit, clearLimit, hitLimit, LIMITS, tooManyAttemptsMessage } from "@/lib/data/rate-limit";
 import { getDb } from "@/lib/db";
 import { fields, invalid, parseForm, success, type FormState } from "@/lib/forms";
 
@@ -57,10 +58,15 @@ export async function changePassword(_: FormState, formData: FormData): Promise<
   const { data, errors } = parseForm(passwordSchema, formData);
   if (!data) return invalid(errors);
   const db = await getDb();
+  const key = `password-change:${user.id}`;
+  const blocked = await checkLimit(db, key, LIMITS.passwordChangePerUser);
+  if (blocked.blocked) return { ok: false, message: tooManyAttemptsMessage(blocked) };
   const hash = await account.getPasswordHash(db, user.id);
   if (!hash || !(await verifyPassword(data.current, hash))) {
+    await hitLimit(db, key, LIMITS.passwordChangePerUser);
     return invalid({ current: "Mot de passe actuel incorrect" });
   }
+  await clearLimit(db, key);
   await account.setPassword(db, user.id, data.next);
   await destroyOtherSessions(db, user.id);
   return success("Mot de passe modifié. Vos autres appareils ont été déconnectés.");

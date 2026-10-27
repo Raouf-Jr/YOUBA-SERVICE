@@ -6,7 +6,7 @@ Application web de gestion pour petites boutiques : ventes du jour, dépenses, s
 
 | Module | Ce qu'il fait |
 | --- | --- |
-| **Comptes** | Inscription / connexion par e-mail. Chaque boutique ne voit que ses données. Comptes **employés** (saisie des ventes, dépenses et stock, sans accès aux bénéfices ni aux rapports). **Mot de passe oublié** par e-mail (lien valable 1 h, à usage unique) ; le propriétaire peut aussi redéfinir le mot de passe d'un employé. |
+| **Comptes** | Inscription / connexion par e-mail. Chaque boutique ne voit que ses données. Comptes **employés** (saisie des ventes, dépenses et stock, sans accès aux bénéfices ni aux rapports). **Mot de passe oublié** par e-mail (lien valable 1 h, à usage unique) ; le propriétaire peut aussi redéfinir le mot de passe d'un employé. **Protection contre les essais de mots de passe** : après 5 échecs, le compte est bloqué 15 minutes (limites aussi sur l'inscription et les demandes de lien). |
 | **Ventes du jour** | Liste des produits avec boutons − / +, prix modifiable (remise), mode de paiement (espèces, Mobile Money, carte…), total en direct. Historique du jour, annulation d'une vente (le stock est remis), navigation par date, mini-graphe des 7 derniers jours. |
 | **Produits & stock** | Catalogue avec catégorie, unité, prix de vente / d'achat et marge. Suivi du stock, seuil d'alerte, réapprovisionnement (enregistré automatiquement en dépense « Achat de marchandises »), inventaire, archivage. Valeur du stock. |
 | **Dépenses** | Catégories (loyer, transport, électricité…), vue par mois, comparaison avec le mois précédent, répartition par catégorie, modification / suppression. |
