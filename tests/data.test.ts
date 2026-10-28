@@ -2,7 +2,8 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { verifyPassword } from "@/lib/auth/password";
 import { entriesForDay, entriesInRange, productHistory, saveDay } from "@/lib/data/entries";
 import { createProduct, deleteProduct, listProducts, setArchived } from "@/lib/data/products";
-import { dailyTotals, firstDate, productTotals, sumTotals } from "@/lib/data/reports";
+import { addGeneralExpense, deleteGeneralExpense, listGeneralExpenses, totalGeneralExpenses } from "@/lib/data/general-expenses";
+import { dailyTotals, firstDate, productTotals, shopBalance, sumTotals } from "@/lib/data/reports";
 import { getSettings, updateSettings } from "@/lib/data/settings";
 import { ensureFirstUser, findUserByUsername } from "@/lib/data/users";
 import { connect, runMigrations, type Connection } from "@/lib/db/client";
@@ -18,7 +19,7 @@ afterAll(async () => {
   await conn?.close();
 });
 
-const base = { investment: 0, startDate: null, openingDate: null, openingRevenue: 0, openingExpense: 0 };
+const base = { investment: 0, openingDate: null, openingProfit: 0 };
 
 describe("settings", () => {
   it("starts as YOUBA SERVICE in F CFA and can be renamed", async () => {
@@ -79,14 +80,12 @@ describe("products and days", () => {
     expect(await entriesForDay(conn.db, day)).toEqual([]);
   });
 
-  it("totals per product include carried-over figures when their date is in the period", async () => {
+  it("totals per product count the days entered; the shop balance adds the money put in and what came before", async () => {
     const shop = await createProduct(conn.db, {
       name: "Boutique",
       investment: 500_000,
-      startDate: "2026-01-01",
       openingDate: "2026-09-30",
-      openingRevenue: 300_000,
-      openingExpense: 120_000,
+      openingProfit: 180_000,
     });
     const other = await createProduct(conn.db, { ...base, name: "Crédit", investment: 50_000 });
     await saveDay(conn.db, "2026-10-01", [
@@ -95,22 +94,40 @@ describe("products and days", () => {
     ]);
     await saveDay(conn.db, "2026-10-02", [{ productId: shop.id, revenue: 10_000, expense: 0, note: null }]);
 
-    // Since the beginning: carried-over totals included.
     const all = await productTotals(conn.db, null);
     const shopAll = all.find((p) => p.name === "Boutique")!;
-    expect(shopAll).toMatchObject({ revenue: 330_000, expense: 125_000, profit: 205_000, days: 2, investment: 500_000 });
-    expect(shopAll.opening).toEqual({ date: "2026-09-30", revenue: 300_000, expense: 120_000 });
-    expect(sumTotals(all)).toEqual({ revenue: 331_000, expense: 125_900, profit: 205_100 });
+    expect(shopAll).toMatchObject({ revenue: 30_000, expense: 5_000, profit: 25_000, days: 2, lastDate: "2026-10-02" });
+    expect(shopAll.opening).toEqual({ date: "2026-09-30", profit: 180_000 });
+    expect(sumTotals(all)).toEqual({ revenue: 31_000, expense: 5_900, profit: 25_100 });
 
-    // October only: the carry-over (30 September) is outside.
-    const october = await productTotals(conn.db, { from: "2026-10-01", to: "2026-10-31" }, shop.id);
-    expect(october).toEqual([expect.objectContaining({ revenue: 30_000, expense: 5_000, opening: null })]);
+    const october = await productTotals(conn.db, { from: "2026-10-02", to: "2026-10-31" }, shop.id);
+    expect(october).toEqual([expect.objectContaining({ revenue: 10_000, expense: 0, profit: 10_000 })]);
 
     expect(await dailyTotals(conn.db, { from: "2026-10-01", to: "2026-10-31" })).toEqual([
       { date: "2026-10-01", revenue: 21_000, expense: 5_900 },
       { date: "2026-10-02", revenue: 10_000, expense: 0 },
     ]);
-    expect(await firstDate(conn.db)).toBe("2026-01-01");
+
+    // Money taken from the overall profit.
+    const rent = await addGeneralExpense(conn.db, { date: "2026-10-05", amount: 40_000, label: "Loyer" });
+    await addGeneralExpense(conn.db, { date: "2026-11-02", amount: 5_000, label: "Électricité" });
+    expect(await totalGeneralExpenses(conn.db, { from: "2026-10-01", to: "2026-10-31" })).toBe(40_000);
+    expect((await listGeneralExpenses(conn.db)).map((g) => g.label)).toEqual(["Électricité", "Loyer"]);
+    expect(await firstDate(conn.db)).toBe("2026-10-01");
+
+    const balance = await shopBalance(conn.db);
+    expect(balance).toMatchObject({
+      invested: 550_000,
+      profitBefore: 180_000,
+      profitSince: 25_100,
+      generalExpenses: 45_000,
+      capital: 550_000 + 180_000 + 25_100 - 45_000,
+    });
+    expect(balance.products.find((p) => p.name === "Boutique")).toMatchObject({ totalProfit: 205_000, capital: 705_000 });
+    expect(balance.products.find((p) => p.name === "Crédit")).toMatchObject({ totalProfit: 100, capital: 50_100 });
+
+    await deleteGeneralExpense(conn.db, rent.id);
+    expect(await totalGeneralExpenses(conn.db)).toBe(5_000);
 
     // Archived products leave the entry screen but keep their history.
     await setArchived(conn.db, other.id, true);

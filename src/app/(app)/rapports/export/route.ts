@@ -1,10 +1,11 @@
 import { getCurrentUser } from "@/lib/auth/dal";
 import { entriesInRange } from "@/lib/data/entries";
+import { listGeneralExpenses } from "@/lib/data/general-expenses";
 import { listProducts } from "@/lib/data/products";
 import { dailyTotals, firstDate, productTotals, sumTotals } from "@/lib/data/reports";
 import { getDb } from "@/lib/db";
 import { formatDate, formatRange, today } from "@/lib/dates";
-import { currencySymbol, formatMoney } from "@/lib/format";
+import { currencySymbol } from "@/lib/format";
 import { resolvePeriod } from "@/lib/period";
 import { buildXlsx, type Sheet } from "@/lib/xlsx";
 
@@ -21,18 +22,15 @@ export async function GET(request: Request) {
   const { range } = resolvePeriod(params, todayISO, since, "mois");
   const product = products.find((p) => p.id === params.produit);
 
-  const [totals, daily, lines] = await Promise.all([
+  const [totals, daily, lines, spent] = await Promise.all([
     productTotals(db, range, product?.id),
     dailyTotals(db, range, product?.id),
     entriesInRange(db, range, product?.id),
+    product ? Promise.resolve([]) : listGeneralExpenses(db, range),
   ]);
   const rows = totals.filter((t) => t.revenue || t.expense).sort((a, b) => b.profit - a.profit);
   const sum = sumTotals(rows);
-  const money = (n: number) => formatMoney(n, user.shop.currency);
-  const opening = rows.reduce((s, r) => ({ revenue: s.revenue + (r.opening?.revenue ?? 0), expense: s.expense + (r.opening?.expense ?? 0) }), {
-    revenue: 0,
-    expense: 0,
-  });
+  const spentTotal = spent.reduce((t, g) => t + g.amount, 0);
 
   const sheets: Sheet[] = [
     {
@@ -47,11 +45,11 @@ export async function GET(request: Request) {
         ["Monnaie", currencySymbol(user.shop.currency)],
         [],
         ["Recettes (argent rentré)", sum.revenue],
-        ["Dépenses (argent sorti)", sum.expense],
-        ["Total bénéfice", sum.profit],
-        ...(opening.revenue || opening.expense
-          ? [[], ["Dont comptes repris : recettes", opening.revenue], ["Dont comptes repris : dépenses", opening.expense]]
-          : []),
+        ["Dépenses des produits (argent sorti)", sum.expense],
+        ["Total bénéfice des produits", sum.profit],
+        ...(product
+          ? []
+          : [["Dépenses sur le bénéfice (loyer, maison…)", spentTotal], ["Total : ce qui reste", sum.profit - spentTotal]]),
         [],
         ["Fichier créé le", formatDate(todayISO)],
       ],
@@ -64,8 +62,7 @@ export async function GET(request: Request) {
         { header: "Recettes", type: "money", width: 16 },
         { header: "Dépenses", type: "money", width: 16 },
         { header: "Bénéfice", type: "money", width: 16 },
-        { header: "Jours saisis", type: "number", width: 13 },
-        { header: "Comptes repris", width: 34 },
+        { header: "Jours notés", type: "number", width: 13 },
       ],
       rows: [
         ...rows.map((r) => [
@@ -75,9 +72,6 @@ export async function GET(request: Request) {
           r.expense,
           r.profit,
           r.days,
-          r.opening
-            ? `Au ${formatDate(r.opening.date)} : ${money(r.opening.revenue)} rentrés, ${money(r.opening.expense)} sortis`
-            : "",
         ]),
         ["Total", null, sum.revenue, sum.expense, sum.profit],
       ],
@@ -107,11 +101,23 @@ export async function GET(request: Request) {
         { header: "Produit", width: 28 },
         { header: "Recette", type: "money", width: 16 },
         { header: "Dépense", type: "money", width: 16 },
-        { header: "Résultat", type: "money", width: 16 },
-        { header: "Note", width: 40 },
+        { header: "Bénéfice", type: "money", width: 16 },
       ],
-      rows: lines.map((l) => [l.date, l.product, l.revenue, l.expense, l.revenue - l.expense, l.note]),
+      rows: lines.map((l) => [l.date, l.product, l.revenue, l.expense, l.revenue - l.expense]),
     },
+    ...(product
+      ? []
+      : [
+          {
+            name: "Dépenses sur le bénéfice",
+            columns: [
+              { header: "Date", type: "date", width: 13 },
+              { header: "Motif", width: 34 },
+              { header: "Montant", type: "money", width: 16 },
+            ],
+            rows: [...[...spent].reverse().map((g) => [g.date, g.label, g.amount]), ["Total", null, spentTotal]],
+          } satisfies Sheet,
+        ]),
   ];
 
   const slug = user.shop.shopName

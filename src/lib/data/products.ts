@@ -6,10 +6,9 @@ import type { ISODate } from "@/lib/dates";
 export type ProductInput = {
   name: string;
   investment: number;
-  startDate: ISODate | null;
+  /** Profit already made before using the app, as counted on `openingDate`. */
   openingDate: ISODate | null;
-  openingRevenue: number;
-  openingExpense: number;
+  openingProfit: number;
 };
 
 export function listProducts(db: DB, opts: { includeArchived?: boolean } = {}) {

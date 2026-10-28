@@ -53,6 +53,18 @@ export async function runMigrations(conn: Connection) {
     await migrate(conn.db as never, { migrationsFolder });
   } else {
     const { migrate } = await import("drizzle-orm/pglite/migrator");
-    await migrate(conn.db as never, { migrationsFolder });
+    try {
+      await migrate(conn.db as never, { migrationsFolder });
+    } catch (error) {
+      // The embedded database can be left unreadable if the program was killed while writing.
+      if (/Aborted\(\)/.test(String((error as { cause?: unknown })?.cause ?? error))) {
+        throw new Error(
+          "La base locale (.data/pglite) ne s'ouvre plus, sans doute après un arrêt brutal. " +
+            "Arrêtez le serveur, supprimez le dossier .data (rm -rf .data) puis relancez npm run db:seed.",
+          { cause: error },
+        );
+      }
+      throw error;
+    }
   }
 }

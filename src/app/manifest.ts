@@ -20,7 +20,7 @@ export default function manifest(): MetadataRoute.Manifest {
     ],
     shortcuts: [
       { name: "Saisir la journée", short_name: "Saisie", url: "/saisie" },
-      { name: "Voir les rapports", short_name: "Rapports", url: "/rapports" },
+      { name: "Voir le bilan", short_name: "Bilan", url: "/bilan" },
     ],
   };
 }

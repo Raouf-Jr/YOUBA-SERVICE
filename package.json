@@ -12,6 +12,7 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx scripts/migrate.ts",
     "db:seed": "tsx scripts/seed.ts",
+    "db:clear": "tsx scripts/clear.ts",
     "build:deploy": "npm run db:migrate && next build",
     "user:reset-password": "tsx scripts/reset-password.ts"
   },

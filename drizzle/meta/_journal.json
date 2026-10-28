@@ -8,6 +8,20 @@
       "when": 1793186016690,
       "tag": "0000_init",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1793190426500,
+      "tag": "0001_general_expenses",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1793190433987,
+      "tag": "0002_single_opening_profit",
+      "breakpoints": true
     }
   ]
 }

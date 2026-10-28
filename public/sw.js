@@ -5,13 +5,13 @@
  * back to the "Hors connexion" page. Days typed offline are handled by the page itself
  * (outbox in localStorage), not here.
  */
-const VERSION = "v3";
+const VERSION = "v4";
 const SHELL_CACHE = `youba-shell-${VERSION}`; // offline page, icons, manifest
 const STATIC_CACHE = "youba-static"; // /_next/static: immutable, shared across versions
 const PAGES_CACHE = "youba-pages"; // signed-in pages: wiped at logout
 const OFFLINE_URL = "/hors-ligne";
 const SHELL = [OFFLINE_URL, "/manifest.webmanifest", "/icon.svg", "/icons/icon-192.png"];
-const APP_PAGES = ["/saisie", "/produits", "/rapports", "/reglages"];
+const APP_PAGES = ["/saisie", "/bilan", "/produits", "/rapports", "/reglages"];
 const MAX_STATIC_ENTRIES = 400;
 const NETWORK_TIMEOUT_MS = 6000;
 
@@ -97,7 +97,7 @@ async function navigate(request, url) {
 
   const network = fetch(request).then(async (response) => {
     // Only the plain page (no ?date=…, no redirect to the login page) is kept.
-    if (cacheable && !url.search && isFreshPage(response)) await pages.put(url.pathname, response.clone());
+    if (cacheable && !url.search) await storePage(pages, url.pathname, response.clone());
     return response;
   });
 
@@ -124,13 +124,24 @@ function isFreshPage(response) {
   return response.ok && !response.redirected && (response.headers.get("Content-Type") || "").includes("text/html");
 }
 
+/**
+ * Keeps a page for offline use, unless part of it failed to render (React then marks the
+ * boundary with data-dgst, or sends a $RX instruction): a hiccup on the server must not
+ * replace the good copy. Returns the HTML when stored.
+ */
+async function storePage(cache, path, response) {
+  if (!isFreshPage(response)) return null;
+  const html = await response.text();
+  if (html.includes("data-dgst") || html.includes("$RX")) return null;
+  await cache.put(path, new Response(html, { status: response.status, headers: response.headers }));
+  return html;
+}
+
 /** Stores a page and the code/styles it needs, so it can render offline. */
 async function cachePage(path, cache) {
   const response = await fetch(path, { credentials: "same-origin", cache: "no-store" });
-  if (!isFreshPage(response)) return;
-  const html = await response.clone().text();
-  await cache.put(path, response);
-  await cacheAssets(html.match(/\/_next\/static\/[^"'\s)\\]+/g) || []);
+  const html = await storePage(cache, path, response);
+  if (html) await cacheAssets(html.match(/\/_next\/static\/[^"'\s)\\]+/g) || []);
 }
 
 async function cacheAssets(urls) {

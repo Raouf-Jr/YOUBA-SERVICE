@@ -69,7 +69,7 @@ export function DateNav({
         <Link
           href={basePath}
           scroll={false}
-            className="inline-flex h-11 shrink-0 items-center rounded-xl px-3 text-sm font-medium text-accent-text hover:bg-accent-soft"
+          className="inline-flex h-11 shrink-0 items-center rounded-xl px-3 text-sm font-medium text-accent-text hover:bg-accent-soft"
         >
           Aujourd&apos;hui
         </Link>

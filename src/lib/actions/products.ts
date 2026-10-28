@@ -17,27 +17,23 @@ const optionalDate = z
 const productSchema = z.object({
   id: z.uuid().optional().or(z.literal("").transform(() => undefined)),
   name: fields.text("Le nom", 60),
-  investment: fields.amount("L'investissement", { optional: true, allowZero: true }),
-  startDate: optionalDate,
+  investment: fields.amount("Le capital de départ", { optional: true, allowZero: true }),
   openingDate: optionalDate,
-  openingRevenue: fields.amount("Le total des recettes", { optional: true, allowZero: true }),
-  openingExpense: fields.amount("Le total des dépenses", { optional: true, allowZero: true }),
+  openingProfit: fields.amount("Le bénéfice déjà fait", { optional: true, allowZero: true }),
 });
 
 export async function saveProduct(_: FormState, formData: FormData): Promise<FormState> {
   await requireUser();
   const { data, errors } = parseForm(productSchema, formData);
   if (!data) return invalid(errors);
-  const hasOpening = (data.openingRevenue ?? 0) > 0 || (data.openingExpense ?? 0) > 0;
-  if (hasOpening && !data.openingDate) return invalid({ openingDate: "Indiquez à quelle date ces totaux ont été arrêtés" });
+  const hasOpening = (data.openingProfit ?? 0) > 0;
+  if (hasOpening && !data.openingDate) return invalid({ openingDate: "Indiquez la date de ce calcul" });
 
   const input = {
     name: data.name,
     investment: data.investment ?? 0,
-    startDate: data.startDate,
     openingDate: hasOpening ? data.openingDate : null,
-    openingRevenue: hasOpening ? (data.openingRevenue ?? 0) : 0,
-    openingExpense: hasOpening ? (data.openingExpense ?? 0) : 0,
+    openingProfit: hasOpening ? (data.openingProfit ?? 0) : 0,
   };
   const db = await getDb();
   if (data.id) {

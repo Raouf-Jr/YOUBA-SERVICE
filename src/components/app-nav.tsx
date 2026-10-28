@@ -1,6 +1,6 @@
 "use client";
 
-import { ChartColumn, NotebookPen, Package, Settings } from "lucide-react";
+import { ChartColumn, NotebookPen, Package, Settings, Wallet } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useOffline } from "next/offline";
@@ -11,9 +11,9 @@ import { cx } from "./ui";
 
 const TABS = [
   { href: "/saisie", label: "Saisie", Icon: NotebookPen },
+  { href: "/bilan", label: "Bilan", Icon: Wallet },
   { href: "/produits", label: "Produits", Icon: Package },
   { href: "/rapports", label: "Rapports", Icon: ChartColumn },
-  { href: "/reglages", label: "Réglages", Icon: Settings },
 ] as const;
 
 /** Top bar everywhere; tabs inline on large screens, at the bottom on phones. */
@@ -71,7 +71,24 @@ function NavFrame({
               </Link>
             ))}
           </nav>
-          <ThemeToggle className="shrink-0" />
+          <div className="flex shrink-0 items-center gap-2">
+            <ThemeToggle />
+            <Link
+              href="/reglages"
+              onClick={go}
+              aria-label="Réglages"
+              title="Réglages"
+              aria-current={isActive("/reglages") ? "page" : undefined}
+              className={cx(
+                "inline-flex size-10 items-center justify-center rounded-full border transition-colors",
+                isActive("/reglages")
+                  ? "border-transparent bg-accent-soft text-accent-text"
+                  : "border-line bg-card text-ink-2 hover:bg-subtle hover:text-ink",
+              )}
+            >
+              <Settings className="size-[18px]" />
+            </Link>
+          </div>
         </div>
       </header>
 

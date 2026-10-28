@@ -6,7 +6,6 @@ import { Card, EmptyState, LinkButton } from "@/components/ui";
 import { requireUser } from "@/lib/auth/dal";
 import { entriesForDay } from "@/lib/data/entries";
 import { listProducts } from "@/lib/data/products";
-import { productTotals } from "@/lib/data/reports";
 import { getDb } from "@/lib/db";
 import { isISODate, today } from "@/lib/dates";
 import { DayEntry } from "./day-entry";
@@ -29,14 +28,14 @@ async function Entry({ searchParams }: Pick<PageProps<"/saisie">, "searchParams"
   const date = asked ?? todayISO;
 
   const db = await getDb();
-  const [products, saved, totals] = await Promise.all([listProducts(db), entriesForDay(db, date), productTotals(db, null)]);
+  const [products, saved] = await Promise.all([listProducts(db), entriesForDay(db, date)]);
 
   if (products.length === 0) {
     return (
       <Card>
         <EmptyState
           icon={<Package className="size-5" />}
-          title="Commencez par ajouter vos produits"
+          title="Bienvenue ! Commencez par ajouter vos produits"
           action={
             <LinkButton href="/produits/nouveau" size="lg">
               <Plus />
@@ -44,13 +43,13 @@ async function Entry({ searchParams }: Pick<PageProps<"/saisie">, "searchParams"
             </LinkButton>
           }
         >
-          Ensuite, chaque jour, vous noterez ici ce que chaque produit a rapporté et ce qu&apos;il a coûté.
+          Ensuite, chaque jour, vous noterez ici pour chaque produit l&apos;argent qui est rentré et l&apos;argent qui est
+          sorti.
         </EmptyState>
       </Card>
     );
   }
 
-  const totalsById = new Map(totals.map((t) => [t.productId, t]));
   return (
     <DayEntry
       userId={user.id}
@@ -59,10 +58,7 @@ async function Entry({ searchParams }: Pick<PageProps<"/saisie">, "searchParams"
       timezone={user.shop.timezone}
       currency={user.shop.currency}
       saved={saved}
-      products={products.map((p) => {
-        const t = totalsById.get(p.id);
-        return { id: p.id, name: p.name, investment: p.investment, profitSoFar: t?.profit ?? 0 };
-      })}
+      products={products.map((p) => ({ id: p.id, name: p.name }))}
     />
   );
 }

@@ -4,12 +4,21 @@ Petite application web pour suivre **ce qui rentre et ce qui sort** dans la bout
 
 ## Ce que fait l'application
 
+Quatre onglets, et toujours les mêmes mots :
+
+- **Recette** = l'argent qui rentre ; **Dépense** = l'argent qui sort pour un produit ;
+- **Bénéfice** = recettes − dépenses ;
+- **Dépense sur le bénéfice** = argent pris sur le bénéfice de toute la boutique (loyer, électricité, maison…) ;
+- **Capital actuel** = investissement de départ + bénéfice − dépenses sur le bénéfice.
+
 | Onglet | Ce qu'on y fait |
 | --- | --- |
-| **Saisie** | On choisit la date (aujourd'hui par défaut), on note pour chaque produit la **recette** (argent rentré) et la **dépense** (argent sorti), puis **Enregistrer**. Juste en dessous s'affiche le **bilan par produit** : résultat du jour, bénéfice depuis le début, part de l'investissement déjà récupérée. Une journée se corrige en la rouvrant. |
-| **Produits** | On crée ses produits. En touchant un produit, on règle son **investissement de départ** et, si on tenait déjà les comptes (cahier), les **totaux arrêtés à une date** : l'application continue à partir de là. Historique des derniers jours, arrêt (le produit quitte la saisie mais reste dans les rapports) ou suppression. |
-| **Rapports** | Recettes, dépenses et bénéfice sur une période (ce mois, mois dernier, 7 jours, 30 jours, cette année, depuis le début, ou dates libres), pour tous les produits ou un seul. Courbe d'évolution, tableau par produit, jour par jour, et **téléchargement Excel** (.xlsx : résumé, par produit, par jour, détail). |
-| **Réglages** | **Fond clair ou sombre** (ou automatique), nom de la boutique et monnaie, changement du mot de passe, déconnexion. |
+| **Saisie** | On choisit la date (aujourd'hui par défaut), on note pour chaque produit sa **recette** et sa **dépense**, puis **Enregistrer**. Juste en dessous : le **bilan de la journée** (bénéfice par produit et total). Une journée se corrige en la rouvrant. |
+| **Bilan** | Le **capital actuel** de toute la boutique, avec le calcul écrit ligne par ligne, le **capital de chaque produit**, et les **dépenses sur le bénéfice** (on en ajoute ou on en supprime ici). |
+| **Produits** | On ajoute ses produits avec leur **investissement de départ**. Si on tenait déjà un cahier : le **bénéfice déjà fait** et la date du calcul, l'application continue à partir de là. Dernières journées, arrêt (le produit quitte la saisie mais reste dans le bilan) ou suppression. |
+| **Rapports** | Ce qui s'est passé sur une période (ce mois, mois dernier, cette année, tout, ou dates libres), pour toute la boutique ou un seul produit : le calcul, la courbe, le tableau par produit, et le **téléchargement Excel** (.xlsx). |
+
+L'icône ⚙ en haut ouvre les **Réglages** : fond **clair, sombre ou automatique** (aussi avec le bouton lune/soleil), nom de la boutique, monnaie, mot de passe, déconnexion.
 
 En plus :
 
@@ -49,12 +58,17 @@ npm run dev
 Puis ouvrez **http://localhost:3000** et connectez-vous avec **youba** / **youba1234**. `Ctrl + C` arrête le serveur.
 
 - `npm install` : à refaire après chaque `git pull` ;
-- `rm -rf .data` : efface la base locale (indispensable une fois si vous aviez lancé l'ancienne version) ;
-- `npm run db:seed` : facultatif, crée 4 produits de démonstration avec 3 mois de chiffres. `npm run db:seed -- --reset` les recrée.
+- `rm -rf .data` : efface la base locale (produits, chiffres et compte) ;
+- `npm run db:seed` : prépare la base avec **seulement le compte**, sans aucun produit.
+
+Autres commandes utiles :
+
+- `npm run db:clear -- --oui` : vide la boutique (produits, journées, dépenses sur le bénéfice) mais **garde le compte** ;
+- `npm run db:seed -- --demo` : ajoute 4 produits de démonstration avec 3 mois de chiffres (`--demo --reset` pour les recréer).
 
 Pour voir la version téléphone sur l'ordinateur : dans Chrome, clic droit → **Inspecter**, puis l'icône téléphone.
 
-> La base locale (dans `.data/`) n'accepte qu'un seul programme à la fois : arrêtez `npm run dev` avant `npm run db:seed`.
+> La base locale (dans `.data/`) n'accepte qu'un seul programme à la fois : arrêtez `npm run dev` avant `npm run db:seed` ou `npm run db:clear`. Si un jour elle ne s'ouvre plus (le terminal le dit), `rm -rf .data` puis `npm run db:seed`.
 >
 > Le mode sans réseau (service worker) n'est actif qu'en production : pour l'essayer en local, `npm run build` puis `npm start`.
 
@@ -107,7 +121,13 @@ DATABASE_URL="postgresql://…" npm run user:reset-password -- youba NouveauMotD
 
 ### Première utilisation
 
-Envoyez le lien à Youba. Sur son téléphone : ouvrir le lien, se connecter, puis menu du navigateur → **Ajouter à l'écran d'accueil**. Ensuite : **Produits → Ajouter un produit**, puis chaque jour **Saisie**.
+Envoyez le lien à Youba. Sur son téléphone : ouvrir le lien, se connecter, puis menu du navigateur → **Ajouter à l'écran d'accueil**. Ensuite : **Produits → Ajouter un produit**, puis chaque jour **Saisie**, et le **Bilan** pour voir où en est la boutique.
+
+Pour vider la boutique en ligne (en gardant le compte), depuis votre ordinateur :
+
+```bash
+DATABASE_URL="postgresql://…" npm run db:clear -- --oui
+```
 
 ## Structure
 
@@ -115,19 +135,20 @@ Envoyez le lien à Youba. Sur son téléphone : ouvrir le lien, se connecter, pu
 src/
   app/
     (auth)/connexion   page de connexion
-    (app)/saisie       saisie du jour + bilan par produit
-    (app)/produits     liste, création, fiche produit (investissement, reprise des comptes)
-    (app)/rapports     statistiques par période + export Excel (rapports/export)
+    (app)/saisie       saisie du jour + bilan de la journée
+    (app)/bilan        capital actuel, capital par produit, dépenses sur le bénéfice
+    (app)/produits     liste, ajout, fiche produit (investissement, bénéfice d'avant)
+    (app)/rapports     résultat d'une période + export Excel (rapports/export)
     (app)/reglages     apparence, boutique, mot de passe
   components/          interface (cartes, formulaires, graphique, navigation, thème)
   lib/
     actions/           Server Actions (vérifient toujours la session)
     auth/              mots de passe, sessions
-    data/              requêtes (produits, journées, rapports, réglages)
+    data/              requêtes (produits, journées, bilan et rapports, dépenses sur le bénéfice)
     db/                schéma Drizzle et connexion (Postgres ou PGlite)
     offline/           file d'attente des journées saisies sans réseau
     xlsx.ts            export Excel
 drizzle/               migrations SQL
-scripts/               migrate.ts, seed.ts, reset-password.ts
+scripts/               migrate.ts, seed.ts, clear.ts, reset-password.ts
 tests/                 tests Vitest
 ```

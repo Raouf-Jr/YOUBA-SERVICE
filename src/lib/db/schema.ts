@@ -39,17 +39,15 @@ export const rateLimits = pgTable("rate_limits", {
 });
 
 /**
- * A product (or activity) followed separately: its starting investment and, if the
- * accounts were kept by hand before, the totals already reached at a given date.
+ * A product (or activity) followed separately: the money put in at the start and, if the
+ * accounts were kept by hand before, the profit already made at a given date.
  */
 export const products = pgTable("products", {
   id: uuid("id").primaryKey().defaultRandom(),
   name: text("name").notNull(),
   investment: money("investment").notNull().default(0),
-  startDate: date("start_date"),
   openingDate: date("opening_date"),
-  openingRevenue: money("opening_revenue").notNull().default(0),
-  openingExpense: money("opening_expense").notNull().default(0),
+  openingProfit: money("opening_profit").notNull().default(0),
   archived: boolean("archived").notNull().default(false),
   createdAt: createdAt(),
 });
@@ -71,6 +69,20 @@ export const entries = pgTable(
   (t) => [uniqueIndex("entries_product_date_idx").on(t.productId, t.date), index("entries_date_idx").on(t.date)],
 );
 
+/** Money taken from the overall profit, not tied to one product: rent, electricity, money for home… */
+export const generalExpenses = pgTable(
+  "general_expenses",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    date: date("date").notNull(),
+    amount: money("amount").notNull(),
+    label: text("label").notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [index("general_expenses_date_idx").on(t.date)],
+);
+
 export type Settings = typeof settings.$inferSelect;
 export type Product = typeof products.$inferSelect;
 export type Entry = typeof entries.$inferSelect;
+export type GeneralExpense = typeof generalExpenses.$inferSelect;

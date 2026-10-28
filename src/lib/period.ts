@@ -17,7 +17,7 @@ export const PERIOD_PRESETS = [
   { key: "mois", label: "Ce mois" },
   { key: "mois-dernier", label: "Mois dernier" },
   { key: "annee", label: "Cette année" },
-  { key: "tout", label: "Depuis le début" },
+  { key: "tout", label: "Tout" },
 ] as const;
 
 export type PeriodKey = (typeof PERIOD_PRESETS)[number]["key"] | "perso";

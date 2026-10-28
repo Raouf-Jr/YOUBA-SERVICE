@@ -1,15 +1,16 @@
 /**
- * Demo data: a few products and ~3 months of days, to try the app locally.
- *   npm run db:seed            (refuses if products already exist)
- *   npm run db:seed -- --reset (erases all products and days first)
- * Sign in with youba / youba1234.
+ * Prepares the local database with just the account (youba / youba1234): no products.
+ *   npm run db:seed
+ * Demo products with ~3 months of days, if ever needed again:
+ *   npm run db:seed -- --demo            (refuses if products already exist)
+ *   npm run db:seed -- --demo --reset    (erases all products and days first)
  */
 import { count } from "drizzle-orm";
 import { ensureFirstUser } from "../src/lib/data/users";
 import { saveDay } from "../src/lib/data/entries";
 import { createProduct } from "../src/lib/data/products";
 import { connect, runMigrations } from "../src/lib/db/client";
-import { products } from "../src/lib/db/schema";
+import { generalExpenses, products } from "../src/lib/db/schema";
 import { addDays, today } from "../src/lib/dates";
 import type { Product } from "../src/lib/db/schema";
 
@@ -24,21 +25,31 @@ const rand = () => {
 const around = (base: number, spread = 0.35) => Math.round((base * (1 - spread + rand() * spread * 2)) / 50) * 50;
 
 async function main() {
+  const demo = process.argv.includes("--demo");
   const reset = process.argv.includes("--reset");
   const conn = await connect();
   await runMigrations(conn);
   const { db } = conn;
-
+  await ensureFirstUser(db, { ...process.env, NODE_ENV: "development" });
   const [{ total }] = await db.select({ total: count() }).from(products);
-  if (total > 0 && !reset) {
-    console.log("La base contient déjà des produits : rien n'a été modifié.");
-    console.log("Pour tout effacer et recréer la démo : npm run db:seed -- --reset");
+  if (!demo) {
+    console.log(total > 0 ? `Base prête (${total} produit${total > 1 ? "s" : ""} déjà enregistré${total > 1 ? "s" : ""}).` : "Base prête, sans produit.");
+    console.log("Connexion : youba / youba1234");
     await conn.close();
     return;
   }
-  if (reset) await db.delete(products);
 
-  await ensureFirstUser(db, { ...process.env, NODE_ENV: "development" });
+  if (total > 0 && !reset) {
+    console.log("La base contient déjà des produits : rien n'a été modifié.");
+    console.log("Pour tout effacer et recréer la démo : npm run db:seed -- --demo --reset");
+    await conn.close();
+    return;
+  }
+  if (reset) {
+    await db.delete(products);
+    await db.delete(generalExpenses);
+  }
+
   const t = today("Africa/Lome");
   const start = addDays(t, -(DAYS - 1));
 
@@ -55,11 +66,9 @@ async function main() {
       await createProduct(db, {
         name: p.name,
         investment: p.investment,
-        startDate: addDays(start, -120),
-        // The second product was followed by hand before: its totals are carried over.
+        // The second product was followed by hand before: its profit so far is carried over.
         openingDate: i === 1 ? addDays(start, -1) : null,
-        openingRevenue: i === 1 ? 2_150_000 : 0,
-        openingExpense: i === 1 ? 1_640_000 : 0,
+        openingProfit: i === 1 ? 510_000 : 0,
       }),
     );
   }
@@ -81,6 +90,8 @@ async function main() {
       ];
     });
     await saveDay(db, date, lines);
+    // Rent, paid from the overall profit on the 1st of each month.
+    if (date.endsWith("-01")) await db.insert(generalExpenses).values({ date, amount: 60_000, label: "Loyer de la boutique" });
   }
 
   console.log(`Démo créée : ${catalog.length} produits, ${DAYS} jours (${start} → ${t}).`);

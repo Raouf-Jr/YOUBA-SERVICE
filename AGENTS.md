@@ -11,7 +11,8 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 ## YOUBA SERVICE — repères pour contribuer
 
 - Une seule boutique par déploiement : ses réglages sont la ligne unique de `settings` (id 1). Le premier compte vient de `ADMIN_USERNAME` / `ADMIN_PASSWORD` (`ensureFirstUser`).
-- Données : `src/lib/data/*` (fonctions pures qui prennent `db`). Une journée = une ligne `entries` par produit et par date (recette, dépense) ; `saveDay` fixe les valeurs, donc un renvoi ne crée pas de doublon.
+- Données : `src/lib/data/*` (fonctions pures qui prennent `db`). Une journée = une ligne `entries` par produit et par date (recette, dépense) ; `saveDay` fixe les valeurs, donc un renvoi ne crée pas de doublon. Les dépenses sur le bénéfice (`general_expenses`) ne sont liées à aucun produit ; `shopBalance` calcule le capital actuel.
+- Vocabulaire de l'interface, à garder identique partout : recette, dépense, bénéfice, dépense sur le bénéfice, investissement de départ, capital actuel.
 - Actions serveur : `src/lib/actions/*` — chacune vérifie la session (`requireUser` / `getCurrentUser`) avant d'agir.
 - Schéma : `src/lib/db/schema.ts`. Après modification : `npm run db:generate` puis commit du dossier `drizzle/`.
 - Pages : `src/app/(app)/*` — le contenu qui lit la session est toujours dans un `<Suspense>` (Cache Components).

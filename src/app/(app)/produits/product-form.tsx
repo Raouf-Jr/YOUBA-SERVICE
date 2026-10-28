@@ -37,19 +37,19 @@ export function ProductForm({ product, symbol }: { product?: Product; symbol: st
       >
         <MoneyInput id="investment" name="investment" defaultValue={product?.investment} suffix={symbol} />
       </Field>
-      <Field label="Date de début (facultatif)" htmlFor="startDate" error={errors.startDate}>
-        <Input id="startDate" name="startDate" type="date" defaultValue={product?.startDate ?? ""} className={big} />
-      </Field>
 
       <Checkbox
         checked={hasOpening}
         onChange={(e) => setHasOpening(e.target.checked)}
-        label="Je tenais déjà les comptes de ce produit"
-        description="Par exemple dans un cahier. Indiquez les totaux arrêtés à une date : l'application continuera à partir de là."
+        label="J'avais déjà fait un bénéfice avec ce produit avant l'application"
+        description="Si vous teniez un cahier : indiquez ce bénéfice et la date du calcul. L'application continue à partir de là."
       />
       {hasOpening && (
-        <div className="-mt-2 flex flex-col gap-4 rounded-2xl border border-line bg-subtle/50 p-4">
-          <Field label="Comptes arrêtés le" htmlFor="openingDate" error={errors.openingDate}>
+        <div className="-mt-2 grid grid-cols-1 gap-4 rounded-2xl border border-line bg-subtle/50 p-4 sm:grid-cols-2">
+          <Field label="Bénéfice déjà fait" htmlFor="openingProfit" error={errors.openingProfit}>
+            <MoneyInput id="openingProfit" name="openingProfit" defaultValue={product?.openingProfit} suffix={symbol} />
+          </Field>
+          <Field label="Calculé le" htmlFor="openingDate" error={errors.openingDate}>
             <Input
               id="openingDate"
               name="openingDate"
@@ -59,13 +59,6 @@ export function ProductForm({ product, symbol }: { product?: Product; symbol: st
               className={big}
             />
           </Field>
-          <Field label="Total des recettes jusqu'à cette date" htmlFor="openingRevenue" error={errors.openingRevenue}>
-            <MoneyInput id="openingRevenue" name="openingRevenue" defaultValue={product?.openingRevenue} suffix={symbol} />
-          </Field>
-          <Field label="Total des dépenses jusqu'à cette date" htmlFor="openingExpense" error={errors.openingExpense}>
-            <MoneyInput id="openingExpense" name="openingExpense" defaultValue={product?.openingExpense} suffix={symbol} />
-          </Field>
-          <p className="text-xs text-muted">Ensuite, notez chaque jour à partir du lendemain de cette date.</p>
         </div>
       )}
 
