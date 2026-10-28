@@ -1,6 +1,6 @@
 import { recordExpense } from "@/lib/actions/expenses";
 import { recordCheckout } from "@/lib/actions/sales";
-import { entriesFor, removeEntry, updateEntry, type OutboxEntry } from "./outbox";
+import { entriesFor, isWaiting, purgeSent, updateEntry, type OutboxEntry } from "./outbox";
 import type { SyncResult } from "./types";
 
 export type SyncOutcome = "done" | "network" | "auth";
@@ -14,8 +14,9 @@ const send: Sender = (entry) => (entry.kind === "sale" ? recordCheckout(entry.pa
  * Safe to call often: concurrent calls share one run, and other tabs wait their turn.
  */
 export async function runSync(userId: string, sender: Sender = send): Promise<SyncOutcome> {
+  purgeSent();
   for (const entry of entriesFor(userId)) {
-    if (entry.error) continue;
+    if (!isWaiting(entry)) continue;
     let result: SyncResult;
     try {
       result = await sender(entry);
@@ -24,7 +25,7 @@ export async function runSync(userId: string, sender: Sender = send): Promise<Sy
       updateEntry(entry.id, { attempts: entry.attempts + 1 });
       return "network";
     }
-    if (result.ok) removeEntry(entry.id);
+    if (result.ok) updateEntry(entry.id, { sentAt: Date.now() });
     else if (result.reason === "auth") return "auth";
     else if (result.reason === "invalid") updateEntry(entry.id, { error: result.message });
     // "shop": the entry belongs to another account on this device; leave it alone.

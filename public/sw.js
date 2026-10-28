@@ -5,7 +5,7 @@
  * back to the "Hors connexion" page. Sales and expenses typed offline are handled by the page
  * itself (outbox in localStorage), not here.
  */
-const VERSION = "v1";
+const VERSION = "v2";
 const SHELL_CACHE = `youba-shell-${VERSION}`; // offline page, icons, manifest
 const STATIC_CACHE = "youba-static"; // /_next/static: immutable, shared across versions
 const PAGES_CACHE = "youba-pages"; // signed-in pages: wiped at logout
@@ -46,7 +46,9 @@ self.addEventListener("activate", (event) => {
 
 self.addEventListener("message", (event) => {
   const data = event.data || {};
-  if (data.type === "warm") event.waitUntil(warm(data.assets || [], data.pages || []));
+  if (data.type === "warm") {
+    event.waitUntil(warm(data.assets || [], data.pages || []).then(() => event.ports[0]?.postMessage("done")));
+  }
   if (data.type === "clear-pages") event.waitUntil(caches.delete(PAGES_CACHE));
 });
 
@@ -150,8 +152,8 @@ async function putStatic(cache, request, response) {
   for (const key of keys.slice(0, Math.max(0, keys.length - MAX_STATIC_ENTRIES))) await cache.delete(key);
 }
 
+/** Pages first (with the code they need), then whatever else the current page loaded. */
 async function warm(assets, pages) {
-  await cacheAssets(assets.map((a) => new URL(a, self.location.origin)).filter((u) => u.origin === self.location.origin).map((u) => u.pathname));
   const cache = await caches.open(PAGES_CACHE);
   for (const page of pages) {
     if (!APP_PAGES.includes(page)) continue;
@@ -161,4 +163,5 @@ async function warm(assets, pages) {
       // Offline: keep the previous copy.
     }
   }
+  await cacheAssets(assets.map((a) => new URL(a, self.location.origin)).filter((u) => u.origin === self.location.origin).map((u) => u.pathname));
 }

@@ -4,7 +4,7 @@ import { addExpense, listExpenses } from "@/lib/data/expenses";
 import { createProduct, getProduct } from "@/lib/data/products";
 import { listSalesForDay, recordSales } from "@/lib/data/sales";
 import { connect, runMigrations, type Connection } from "@/lib/db/client";
-import { addEntry, entriesFor, newId, setOutboxStorage, type OutboxEntry } from "@/lib/offline/outbox";
+import { addEntry, entriesFor, isWaiting, newId, purgeSent, setOutboxStorage, type OutboxEntry } from "@/lib/offline/outbox";
 import type { SyncResult } from "@/lib/offline/types";
 
 // The real senders are Server Actions; the sync loop is tested with stand-ins.
@@ -86,7 +86,7 @@ describe("outbox sync", () => {
     setOutboxStorage({ getItem: (k) => data.get(k) ?? null, setItem: (k, v) => void data.set(k, v) });
   });
 
-  it("sends the user's entries oldest first and removes delivered ones", async () => {
+  it("sends the user's entries oldest first, marks them sent, then forgets them", async () => {
     addEntry(entry("b", "u1", 2));
     addEntry(entry("a", "u1", 1));
     addEntry(entry("other", "u2", 0));
@@ -98,8 +98,16 @@ describe("outbox sync", () => {
     });
     expect(outcome).toBe("done");
     expect(sent).toEqual(["a", "b"]);
-    expect(entriesFor("u1")).toEqual([]);
+    expect(entriesFor("u1").filter(isWaiting)).toEqual([]);
+    expect(entriesFor("u1").every((e) => e.sentAt)).toBe(true);
     expect(entriesFor("u2")).toHaveLength(1);
+
+    // A second run sends nothing again; old sent entries are purged.
+    await runSync("u1", async () => {
+      throw new Error("should not be called");
+    });
+    purgeSent(Date.now() + 5 * 60_000);
+    expect(entriesFor("u1")).toEqual([]);
   });
 
   it("stops on network errors and keeps the entries for later", async () => {
@@ -123,11 +131,14 @@ describe("outbox sync", () => {
       ok: { ok: true, added: true },
     };
     expect(await runSync("u1", async (e) => answers[e.id])).toBe("done");
-    expect(entriesFor("u1")).toEqual([expect.objectContaining({ id: "bad", error: "Dépense invalide" })]);
+    expect(entriesFor("u1").map((e) => [e.id, e.error ?? null, !!e.sentAt])).toEqual([
+      ["bad", "Dépense invalide", false],
+      ["ok", null, true],
+    ]);
 
     addEntry(entry("later", "u1", 3));
     expect(await runSync("u1", async () => ({ ok: false, reason: "auth", message: "" }))).toBe("auth");
-    expect(entriesFor("u1").map((e) => e.id)).toEqual(["bad", "later"]);
+    expect(entriesFor("u1").filter(isWaiting).map((e) => e.id)).toEqual(["later"]);
   });
 
   it("generates valid v4 ids", () => {

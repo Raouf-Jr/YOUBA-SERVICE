@@ -27,17 +27,22 @@ Application web de gestion pour petites boutiques : ventes du jour, dépenses, s
 
 ## Démarrer en local
 
-Prérequis : Node.js 20.9 ou plus récent.
+Prérequis : **Node.js 20.9 ou plus récent** (`node -v` pour vérifier ; sinon installez la version LTS depuis [nodejs.org](https://nodejs.org), ou `brew install node` sur Mac).
 
 ```bash
-npm install
+cd YOUBA-SERVICE
+npm install       # une seule fois (et après chaque mise à jour du code)
 npm run db:seed   # (facultatif) crée une boutique de démonstration avec 4 mois de données
-npm run dev       # http://localhost:3000
+npm run dev       # puis ouvrez http://localhost:3000
 ```
 
-Compte de démonstration : **demo@youba.app** / **demo1234**
+Compte de démonstration : **demo@youba.app** / **demo1234**. `Ctrl + C` arrête le serveur.
 
-> La base locale (PGlite, dans `.data/`) n'accepte qu'un seul programme à la fois : arrêtez `npm run dev` avant de lancer `npm run db:seed`.
+Pour voir la version téléphone sur l'ordinateur : dans Chrome, clic droit → **Inspecter**, puis l'icône téléphone (mode responsive). Sur un vrai téléphone, testez après la mise en ligne (HTTPS).
+
+> La base locale (PGlite, dans `.data/`) n'accepte qu'un seul programme à la fois : arrêtez `npm run dev` avant de lancer `npm run db:seed`. Pour repartir de zéro : supprimez le dossier `.data`.
+>
+> Le mode hors connexion (service worker) n'est actif qu'en production : pour l'essayer en local, lancez `npm run build && npm start` et utilisez Chrome.
 
 Autres commandes :
 
@@ -54,19 +59,25 @@ Il faut deux services, tous deux avec une offre gratuite : une **base de donnée
 
 ### 1. Base de données — Neon
 
-1. Créez un compte sur [neon.com](https://neon.com) puis un projet (région la plus proche de la boutique, par ex. Europe / Frankfurt pour l'Afrique de l'Ouest).
-2. Dans **Connect**, cochez **Connection pooling** et copiez la chaîne de connexion (`postgresql://…-pooler…/neondb?sslmode=require`).
+1. Créez un compte sur [neon.com](https://neon.com) puis un projet. Choisissez la région **AWS US East 2 (Ohio)** : c'est là que Netlify fait tourner le serveur de l'application par défaut, et la base doit être à côté (sinon chaque requête traverse l'Atlantique).
+2. Dans **Connect**, activez **Connection pooling** et copiez la chaîne de connexion (`postgresql://…-pooler…/neondb?sslmode=require`).
 
 L'offre gratuite (1 Go de stockage) suffit largement pour des années de ventes d'une boutique.
 
 ### 2. Hébergement — Netlify
 
-1. Créez un compte sur [netlify.com](https://www.netlify.com) et choisissez **Add new project → Import an existing project → GitHub**, puis ce dépôt.
-2. Le fichier `netlify.toml` règle déjà la commande de build (`npm run build:deploy` : migrations de la base puis build).
-3. Dans **Environment variables**, ajoutez `DATABASE_URL` avec la chaîne Neon copiée plus haut.
-4. Lancez le déploiement. Chaque `git push` sur la branche principale redéploie automatiquement.
+1. Créez un compte sur [netlify.com](https://www.netlify.com) (le plus simple : « Sign up with GitHub »).
+2. **Add new project → Import an existing project → GitHub**, autorisez Netlify, puis choisissez le dépôt `YOUBA-SERVICE`.
+3. Dans l'écran de configuration :
+   - **Branch to deploy** : la branche qui contient le code (celle par défaut du dépôt) ;
+   - **Build command** et **Publish directory** : laissez ce que Netlify propose, `netlify.toml` les impose (`npm run build:deploy`, `.next`) ;
+   - **Environment variables → Add** : `DATABASE_URL` = la chaîne Neon copiée plus haut.
+4. Cliquez sur **Deploy**. Le premier déploiement prend 2 à 4 minutes (il crée aussi les tables dans Neon). Le site est ensuite en ligne à une adresse du type `https://nom-au-hasard.netlify.app`, modifiable dans **Domain management**.
+5. Chaque `git push` sur cette branche redéploie automatiquement.
 
-L'offre gratuite de Netlify autorise un usage commercial. Vercel fonctionne aussi (importez le dépôt, ajoutez `DATABASE_URL`, commande de build `npm run build:deploy`), mais son offre gratuite « Hobby » est réservée à un usage personnel non commercial.
+En cas d'échec, ouvrez le déploiement dans **Deploys** : le journal indique l'étape fautive (« DATABASE_URL manquant » = variable oubliée ou mal nommée).
+
+Vercel fonctionne aussi (importez le dépôt, ajoutez `DATABASE_URL`, commande de build `npm run build:deploy`), mais son offre gratuite « Hobby » est réservée à un usage personnel non commercial.
 
 ### 3. E-mails (mot de passe oublié) — facultatif mais recommandé
 

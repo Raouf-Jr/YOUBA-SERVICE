@@ -60,6 +60,7 @@ export function SalesEntry({
   userId,
   shopId,
   timezone,
+  knownIds,
 }: {
   products: EntryProduct[];
   date: string;
@@ -70,6 +71,8 @@ export function SalesEntry({
   userId: string;
   shopId: string;
   timezone: string;
+  /** Checkout ids already listed by the server for this day. */
+  knownIds: string[];
 }) {
   const offline = useOffline();
   // Sales still waiting to be sent already left the shelf.
@@ -78,10 +81,12 @@ export function SalesEntry({
     const map = new Map<string, number>();
     for (const e of outbox) {
       if (e.kind !== "sale" || e.error) continue;
+      // Once the page lists the sale, its stock figures already include it.
+      if (e.sentAt && (knownIds.includes(e.id) || e.payload.date !== date)) continue;
       for (const l of e.payload.lines) map.set(l.productId, (map.get(l.productId) ?? 0) + l.quantity);
     }
     return map;
-  }, [outbox]);
+  }, [outbox, knownIds, date]);
   const [state, setState] = useState<FormState & { errors?: Record<string, string> }>({});
   const [qty, setQty] = useState<Record<string, string>>({});
   const [price, setPrice] = useState<Record<string, string>>({});

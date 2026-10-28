@@ -4,7 +4,7 @@ import { CloudOff, LoaderCircle, TriangleAlert } from "lucide-react";
 import Link from "next/link";
 import { useOffline } from "next/offline";
 import { useEffect, useState } from "react";
-import { useOutbox } from "@/lib/offline/outbox";
+import { isWaiting, purgeSent, useOutbox } from "@/lib/offline/outbox";
 import { syncOutbox, type SyncOutcome } from "@/lib/offline/sync";
 import { warmOfflineCache } from "./service-worker";
 
@@ -18,13 +18,22 @@ export function OfflineSync({ userId }: { userId: string }) {
   const offline = useOffline();
   const entries = useOutbox(userId);
   const [outcome, setOutcome] = useState<SyncOutcome>("done");
-  const waiting = entries.filter((e) => !e.error);
+  const waiting = entries.filter(isWaiting);
   const refused = entries.filter((e) => e.error);
 
   // Keep Sales and Expenses available offline.
   useEffect(() => {
     warmOfflineCache(["/ventes", "/depenses"]);
   }, []);
+
+  // Sent entries are kept a short while (until the page shows them), then forgotten.
+  const hasSent = entries.some((e) => e.sentAt);
+  useEffect(() => {
+    purgeSent();
+    if (!hasSent) return;
+    const timer = setInterval(() => purgeSent(), 30_000);
+    return () => clearInterval(timer);
+  }, [hasSent]);
 
   // Try now, whenever something is added, when the network comes back, and every 30 s while entries wait.
   const pendingCount = waiting.length;

@@ -2,6 +2,7 @@
 # Les migrations de la base sont appliquées avant chaque build.
 [build]
   command = "npm run build:deploy"
+  publish = ".next"
 
 [build.environment]
   NODE_VERSION = "22"

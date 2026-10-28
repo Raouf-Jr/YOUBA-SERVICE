@@ -75,6 +75,7 @@ export function listSalesForDay(db: DB, shopId: string, date: ISODate) {
       unitPrice: sales.unitPrice,
       total: sales.total,
       paymentMethod: sales.paymentMethod,
+      checkoutId: sales.checkoutId,
       createdAt: sales.createdAt,
       unit: products.unit,
       seller: users.name,

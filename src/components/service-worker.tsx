@@ -24,7 +24,6 @@ export function warmOfflineCache(pages: string[], force = false) {
   try {
     const last = Number(localStorage.getItem(WARM_KEY) || 0);
     if (!force && Date.now() - last < WARM_EVERY_MS) return;
-    localStorage.setItem(WARM_KEY, String(Date.now()));
   } catch {
     // Storage blocked: warm every time, it's cheap enough.
   }
@@ -34,7 +33,15 @@ export function warmOfflineCache(pages: string[], force = false) {
         .getEntriesByType("resource")
         .map((entry) => entry.name)
         .filter((name) => name.includes("/_next/static/"));
-      registration.active?.postMessage({ type: "warm", assets, pages });
+      // Only remember the warm-up once the service worker says it is done: if the page is left
+      // before (slow first install), the next page tries again.
+      const channel = new MessageChannel();
+      channel.port1.onmessage = () => {
+        try {
+          localStorage.setItem(WARM_KEY, String(Date.now()));
+        } catch {}
+      };
+      registration.active?.postMessage({ type: "warm", assets, pages }, [channel.port2]);
     })
     .catch(() => {});
 }

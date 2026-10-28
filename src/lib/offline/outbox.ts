@@ -15,6 +15,11 @@ export type OutboxEntry = {
   attempts: number;
   /** Set when the server refused the entry for good. */
   error?: string;
+  /**
+   * Set once the server has it. The entry stays a little longer so it doesn't vanish from
+   * the screen before the refreshed page shows it.
+   */
+  sentAt?: number;
 } & (
   | { kind: "sale"; payload: CheckoutPayload; summary: { total: number; items: number; label: string } }
   | { kind: "expense"; payload: ExpensePayload; summary: { label: string } }
@@ -78,9 +83,19 @@ export function removeEntry(id: string) {
   write(read().filter((e) => e.id !== id));
 }
 
-export function updateEntry(id: string, patch: Partial<Pick<OutboxEntry, "attempts" | "error">>) {
+export function updateEntry(id: string, patch: Partial<Pick<OutboxEntry, "attempts" | "error" | "sentAt">>) {
   write(read().map((e) => (e.id === id ? ({ ...e, ...patch } as OutboxEntry) : e)));
 }
+
+/** Forgets entries the server received more than `maxAgeMs` ago. */
+export function purgeSent(now = Date.now(), maxAgeMs = 120_000) {
+  const entries = read();
+  const kept = entries.filter((e) => !e.sentAt || now - e.sentAt < maxAgeMs);
+  if (kept.length !== entries.length) write(kept);
+}
+
+/** Still has to reach the server (not sent, not refused). */
+export const isWaiting = (e: OutboxEntry) => !e.error && !e.sentAt;
 
 /** Oldest first. */
 export function entriesFor(userId: string): OutboxEntry[] {

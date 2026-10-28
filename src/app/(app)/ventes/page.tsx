@@ -41,6 +41,7 @@ async function Sales({ searchParams }: { searchParams: PageProps<"/ventes">["sea
   ]);
 
   const money = (v: number) => formatMoney(v, user.shop.currency);
+  const knownIds = [...new Set(daySales.map((s) => s.checkoutId).filter((id): id is string => !!id))];
   const total = daySales.reduce((s, x) => s + x.total, 0);
   const items = daySales.reduce((s, x) => s + x.quantity, 0);
   const byMethod = new Map<string, number>();
@@ -83,6 +84,7 @@ async function Sales({ searchParams }: { searchParams: PageProps<"/ventes">["sea
             userId={user.id}
             shopId={user.shop.id}
             timezone={user.shop.timezone}
+            knownIds={knownIds}
           />
         </Card>
 
@@ -138,7 +140,13 @@ async function Sales({ searchParams }: { searchParams: PageProps<"/ventes">["sea
           <Card>
             <CardHeader title="Ventes enregistrées" description={daySales.length ? undefined : "Rien pour cette journée"} />
             <div className="mt-2">
-              <PendingEntries userId={user.id} kind="sale" currency={user.shop.currency} filter={date === t ? undefined : date} />
+              <PendingEntries
+                userId={user.id}
+                kind="sale"
+                currency={user.shop.currency}
+                filter={date === t ? undefined : date}
+                knownIds={knownIds}
+              />
             </div>
             {daySales.length ? (
               <ul className="divide-y divide-line">

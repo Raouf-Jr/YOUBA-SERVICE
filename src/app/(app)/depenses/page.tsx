@@ -114,7 +114,13 @@ async function Expenses({ searchParams }: { searchParams: PageProps<"/depenses">
               </p>
             </div>
           </div>
-          <PendingEntries userId={user.id} kind="expense" currency={user.shop.currency} filter={month === currentMonth ? undefined : month} />
+          <PendingEntries
+            userId={user.id}
+            kind="expense"
+            currency={user.shop.currency}
+            filter={month === currentMonth ? undefined : month}
+            knownIds={expenses.map((e) => e.clientRef).filter((id): id is string => !!id)}
+          />
           {expenses.length === 0 ? (
             <EmptyState icon={<Receipt className="size-5" />} title="Aucune dépense ce mois-ci">
               Loyer, transport, électricité, achats de marchandises… Notez tout ce qui sort de la caisse.

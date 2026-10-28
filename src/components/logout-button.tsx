@@ -2,7 +2,7 @@
 
 import { useTransition, type ReactNode } from "react";
 import { logout } from "@/lib/actions/auth";
-import { useOutbox } from "@/lib/offline/outbox";
+import { isWaiting, useOutbox } from "@/lib/offline/outbox";
 import { clearOfflinePages } from "./service-worker";
 
 /**
@@ -20,7 +20,7 @@ export function LogoutButton({
   children: ReactNode;
   label?: string;
 }) {
-  const waiting = useOutbox(userId ?? "").filter((e) => !e.error).length;
+  const waiting = useOutbox(userId ?? "").filter(isWaiting).length;
   const [pending, startTransition] = useTransition();
   return (
     <button

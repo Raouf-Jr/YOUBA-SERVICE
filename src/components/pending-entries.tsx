@@ -1,6 +1,6 @@
 "use client";
 
-import { Clock3, Trash2, TriangleAlert } from "lucide-react";
+import { Check, Clock3, Trash2, TriangleAlert } from "lucide-react";
 import { useOffline } from "next/offline";
 import { removeEntry, useOutbox } from "@/lib/offline/outbox";
 import { paymentLabel } from "@/lib/constants";
@@ -13,22 +13,25 @@ export function PendingEntries({
   kind,
   currency,
   filter,
+  knownIds,
 }: {
   userId: string;
   kind: "sale" | "expense";
   currency: string;
   /** Keep only entries of this day ("2026-10-27") or month ("2026-10"). */
   filter?: string;
+  /** Ids (checkout id / client ref) the page already lists from the server. */
+  knownIds: string[];
 }) {
   // While online an entry is sent within seconds; cancelling it then would race the upload.
   const offline = useOffline();
   const entries = useOutbox(userId).filter(
-    (e) => e.kind === kind && (!filter || e.payload.date.startsWith(filter)),
+    (e) => e.kind === kind && (!filter || e.payload.date.startsWith(filter)) && !knownIds.includes(e.id),
   );
   if (entries.length === 0) return null;
 
   return (
-    <ul className="divide-y divide-line border-b border-line bg-warn-soft/35">
+    <ul className="divide-y divide-line border-b border-line bg-subtle/50">
       {entries.map((e) => {
         const amount = e.kind === "sale" ? e.summary.total : e.payload.amount;
         const detail =
@@ -40,19 +43,19 @@ export function PendingEntries({
             <span
               className={cx(
                 "flex size-8 shrink-0 items-center justify-center rounded-full",
-                e.error ? "bg-bad-soft text-bad" : "bg-warn-soft text-warn",
+                e.error ? "bg-bad-soft text-bad" : e.sentAt ? "bg-good-soft text-good" : "bg-warn-soft text-warn",
               )}
             >
-              {e.error ? <TriangleAlert className="size-4" /> : <Clock3 className="size-4" />}
+              {e.error ? <TriangleAlert className="size-4" /> : e.sentAt ? <Check className="size-4" /> : <Clock3 className="size-4" />}
             </span>
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-medium text-ink">{e.summary.label}</p>
               <p className={cx("truncate text-xs", e.error ? "text-bad" : "text-muted")}>
-                {e.error ?? `${detail} · en attente d'envoi`}
+                {e.error ?? `${detail} · ${e.sentAt ? "envoyée" : "en attente d'envoi"}`}
               </p>
             </div>
             <span className="tabular shrink-0 text-sm font-semibold">{formatMoney(amount, currency)}</span>
-            {(e.error || offline) && (
+            {(e.error || (offline && !e.sentAt)) && (
               <button
                 type="button"
                 onClick={() => {
