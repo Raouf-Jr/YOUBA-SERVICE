@@ -29,12 +29,18 @@ Application web de gestion pour petites boutiques : ventes du jour, dépenses, s
 
 Prérequis : **Node.js 20.9 ou plus récent** (`node -v` pour vérifier ; sinon installez la version LTS depuis [nodejs.org](https://nodejs.org), ou `brew install node` sur Mac).
 
+Tapez ces commandes une par une (Entrée après chacune) :
+
 ```bash
 cd YOUBA-SERVICE
-npm install       # une seule fois (et après chaque mise à jour du code)
-npm run db:seed   # (facultatif) crée une boutique de démonstration avec 4 mois de données
-npm run dev       # puis ouvrez http://localhost:3000
+npm install
+npm run db:seed
+npm run dev
 ```
+
+- `npm install` : une seule fois, puis après chaque `git pull` ;
+- `npm run db:seed` : facultatif, crée une boutique de démonstration avec 4 mois de données ;
+- `npm run dev` : démarre le site, ouvrez ensuite **http://localhost:3000**.
 
 Compte de démonstration : **demo@youba.app** / **demo1234**. `Ctrl + C` arrête le serveur.
 
@@ -46,12 +52,10 @@ Pour voir la version téléphone sur l'ordinateur : dans Chrome, clic droit → 
 
 Autres commandes :
 
-```bash
-npm test            # tests
-npm run typecheck   # vérification TypeScript
-npm run lint        # ESLint
-npm run build       # build de production
-```
+- `npm test` : tests automatiques ;
+- `npm run typecheck` : vérification TypeScript ;
+- `npm run lint` : ESLint ;
+- `npm run build` : build de production.
 
 ## Mise en ligne gratuite
 
