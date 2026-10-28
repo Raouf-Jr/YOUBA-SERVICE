@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { change, formatMoney } from "@/lib/format";
+import { formatMoney } from "@/lib/format";
 import { parseAmount } from "@/lib/forms";
-import { toCsv } from "@/lib/csv";
+import { strFromU8, unzipSync } from "fflate";
+import { buildXlsx } from "@/lib/xlsx";
 
 describe("parseAmount", () => {
   it("reads amounts typed the French way", () => {
@@ -21,16 +22,26 @@ describe("formatting", () => {
     expect(formatMoney(12.5, "EUR")).toMatch(/^12,50 €$/);
   });
 
-  it("computes relative change only when there is a basis", () => {
-    expect(change(150, 100)).toBe(0.5);
-    expect(change(50, -100)).toBe(1.5);
-    expect(change(10, 0)).toBeNull();
-  });
-
-  it("builds Excel-friendly CSV", () => {
-    const csv = toCsv(["Produit", "Total"], [["Riz; 25 kg", 1250.5]]);
-    expect(csv.startsWith("﻿")).toBe(true);
-    expect(csv).toContain('"Riz; 25 kg";1250,5');
+  it("builds an Excel workbook with dates, amounts and bold totals", () => {
+    const files = unzipSync(
+      buildXlsx([
+        {
+          name: "Par jour: <test>",
+          columns: [{ header: "Date", type: "date" }, { header: "Recettes", type: "money" }, { header: "Note" }],
+          rows: [
+            ["2026-10-28", 12500, "Riz & savon"],
+            ["Total", 12500, null],
+          ],
+        },
+      ]),
+    );
+    expect(Object.keys(files)).toContain("xl/worksheets/sheet1.xml");
+    const sheet = strFromU8(files["xl/worksheets/sheet1.xml"]);
+    expect(sheet).toContain('<c r="A2" s="3"><v>46323</v></c>'); // 28/10/2026 as an Excel date
+    expect(sheet).toContain('<c r="B2" s="2"><v>12500</v></c>');
+    expect(sheet).toContain("Riz &amp; savon");
+    expect(sheet).toContain('<c r="B3" s="5"><v>12500</v></c>'); // total row in bold
+    expect(strFromU8(files["xl/workbook.xml"])).toContain('name="Par jour  &lt;test&gt;"');
   });
 });
 

@@ -10,9 +10,10 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 ## YOUBA SERVICE — repères pour contribuer
 
-- Données : `src/lib/data/*` (fonctions pures qui prennent `db` + `shopId` : chaque requête est filtrée par boutique).
-- Actions serveur : `src/lib/actions/*` — chacune vérifie la session (`requireUser` / `requireOwner`) avant d'agir.
+- Une seule boutique par déploiement : ses réglages sont la ligne unique de `settings` (id 1). Le premier compte vient de `ADMIN_USERNAME` / `ADMIN_PASSWORD` (`ensureFirstUser`).
+- Données : `src/lib/data/*` (fonctions pures qui prennent `db`). Une journée = une ligne `entries` par produit et par date (recette, dépense) ; `saveDay` fixe les valeurs, donc un renvoi ne crée pas de doublon.
+- Actions serveur : `src/lib/actions/*` — chacune vérifie la session (`requireUser` / `getCurrentUser`) avant d'agir.
 - Schéma : `src/lib/db/schema.ts`. Après modification : `npm run db:generate` puis commit du dossier `drizzle/`.
 - Pages : `src/app/(app)/*` — le contenu qui lit la session est toujours dans un `<Suspense>` (Cache Components).
 - Vérifications : `npm run typecheck && npm run lint && npm test`.
-- Hors connexion : les nouvelles ventes et dépenses passent par la file locale (`src/lib/offline/`) puis par `recordCheckout` / `recordExpense`, qui ignorent un renvoi grâce à `checkout_id` / `client_ref`. Après toute modification de `public/sw.js`, incrémentez `VERSION`.
+- Hors connexion : la Saisie passe par la file locale (`src/lib/offline/`) puis par l'action `saveDay`. Après toute modification de `public/sw.js`, incrémentez `VERSION`.

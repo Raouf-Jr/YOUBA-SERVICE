@@ -2,11 +2,11 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "YOUBA SERVICE — Gestion de boutique",
+    name: "YOUBA SERVICE",
     short_name: "YOUBA",
-    description: "Ventes, dépenses, stock et bénéfices de votre boutique, au jour le jour.",
+    description: "Ce qui rentre et ce qui sort, produit par produit, chaque jour.",
     lang: "fr",
-    start_url: "/tableau-de-bord",
+    start_url: "/saisie",
     scope: "/",
     display: "standalone",
     orientation: "portrait",
@@ -19,8 +19,8 @@ export default function manifest(): MetadataRoute.Manifest {
       { src: "/icons/maskable-512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
     ],
     shortcuts: [
-      { name: "Saisir les ventes", short_name: "Ventes", url: "/ventes" },
-      { name: "Ajouter une dépense", short_name: "Dépense", url: "/depenses" },
+      { name: "Saisir la journée", short_name: "Saisie", url: "/saisie" },
+      { name: "Voir les rapports", short_name: "Rapports", url: "/rapports" },
     ],
   };
 }

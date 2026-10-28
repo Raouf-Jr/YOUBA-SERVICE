@@ -1,31 +1,23 @@
 import { useMemo, useSyncExternalStore } from "react";
-import type { CheckoutPayload, ExpensePayload } from "./types";
+import type { DayPayload } from "./types";
 
 /**
- * Sales and expenses typed on this device, waiting to reach the server.
- * Stored in localStorage so they survive closing the app, and tagged with the user
- * so a shared phone never sends one person's entries under another's account.
+ * Days typed on this device, waiting to reach the server. Stored in localStorage so they
+ * survive closing the app, and tagged with the user so a shared phone never mixes accounts.
  */
 export type OutboxEntry = {
-  /** Same value as the payload's checkoutId / clientRef. */
   id: string;
   userId: string;
-  shopId: string;
   createdAt: number;
   attempts: number;
   /** Set when the server refused the entry for good. */
   error?: string;
-  /**
-   * Set once the server has it. The entry stays a little longer so it doesn't vanish from
-   * the screen before the refreshed page shows it.
-   */
+  /** Set once the server has it; kept a moment so the screen doesn't flicker, then forgotten. */
   sentAt?: number;
-} & (
-  | { kind: "sale"; payload: CheckoutPayload; summary: { total: number; items: number; label: string } }
-  | { kind: "expense"; payload: ExpensePayload; summary: { label: string } }
-);
+  payload: DayPayload;
+};
 
-const KEY = "youba:outbox:v1";
+const KEY = "youba:outbox:v2";
 const EVENT = "youba:outbox-change";
 
 type Storage = { getItem(key: string): string | null; setItem(key: string, value: string): void };
@@ -84,11 +76,11 @@ export function removeEntry(id: string) {
 }
 
 export function updateEntry(id: string, patch: Partial<Pick<OutboxEntry, "attempts" | "error" | "sentAt">>) {
-  write(read().map((e) => (e.id === id ? ({ ...e, ...patch } as OutboxEntry) : e)));
+  write(read().map((e) => (e.id === id ? { ...e, ...patch } : e)));
 }
 
 /** Forgets entries the server received more than `maxAgeMs` ago. */
-export function purgeSent(now = Date.now(), maxAgeMs = 120_000) {
+export function purgeSent(now = Date.now(), maxAgeMs = 60_000) {
   const entries = read();
   const kept = entries.filter((e) => !e.sentAt || now - e.sentAt < maxAgeMs);
   if (kept.length !== entries.length) write(kept);
@@ -114,14 +106,13 @@ function subscribe(callback: () => void) {
   };
 }
 
-/** Live list of the user's pending entries (empty during server rendering). */
+/** Live list of the user's queued days (empty during server rendering and hydration). */
 export function useOutbox(userId: string): OutboxEntry[] {
   const raw = useSyncExternalStore(
     subscribe,
     () => getStorage().getItem(KEY) ?? "[]",
     () => "[]",
   );
-  // Derived from the snapshot itself, so hydration sees the same (empty) list as the server.
   return useMemo(() => forUser(parse(raw), userId), [raw, userId]);
 }
 

@@ -1,70 +1,119 @@
+import { ChevronRight, Package, Plus } from "lucide-react";
 import type { Metadata } from "next";
+import Link from "next/link";
 import { Suspense } from "react";
 import { PageSkeleton } from "@/components/skeleton";
-import { StatTile } from "@/components/stats";
-import { Card, PageHeader } from "@/components/ui";
+import { Meter } from "@/components/stats";
+import { Card, cx, EmptyState, LinkButton, PageHeader } from "@/components/ui";
 import { requireUser } from "@/lib/auth/dal";
-import { listCategories, listProducts } from "@/lib/data/products";
+import { productTotals, type ProductTotals } from "@/lib/data/reports";
 import { getDb } from "@/lib/db";
-import { today } from "@/lib/dates";
-import { formatMoney, formatNumber } from "@/lib/format";
-import { ProductsView } from "./products-view";
+import { formatDate } from "@/lib/dates";
+import { formatMoney, formatPercent } from "@/lib/format";
 
-export const metadata: Metadata = { title: "Produits & stock" };
+export const metadata: Metadata = { title: "Produits" };
 
-export default function ProductsPage({ searchParams }: PageProps<"/produits">) {
+export default function ProductsPage() {
   return (
-    <Suspense fallback={<PageSkeleton tiles={3} />}>
-      <Products searchParams={searchParams} />
-    </Suspense>
+    <>
+      <PageHeader
+        title="Mes produits"
+        description="Touchez un produit pour indiquer son investissement de départ ou reprendre vos anciens comptes."
+        actions={
+          <LinkButton href="/produits/nouveau" size="lg" className="w-full sm:w-auto">
+            <Plus />
+            Ajouter un produit
+          </LinkButton>
+        }
+      />
+      <Suspense fallback={<PageSkeleton header={false} tiles={0} />}>
+        <Products />
+      </Suspense>
+    </>
   );
 }
 
-async function Products({ searchParams }: { searchParams: PageProps<"/produits">["searchParams"] }) {
+async function Products() {
   const user = await requireUser();
-  const params = await searchParams;
-  const db = await getDb();
-  const [products, categories] = await Promise.all([
-    listProducts(db, user.shop.id, { includeArchived: true }),
-    listCategories(db, user.shop.id),
-  ]);
+  const all = await productTotals(await getDb(), null);
+  const money = (n: number) => formatMoney(n, user.shop.currency);
+  const active = all.filter((p) => !p.archived);
+  const archived = all.filter((p) => p.archived);
 
-  const active = products.filter((p) => !p.archived);
-  const tracked = active.filter((p) => p.trackStock);
-  const stockValue = tracked.reduce((s, p) => s + Math.max(0, p.stock) * (p.costPrice ?? p.salePrice), 0);
-  const alerts = tracked.filter((p) => p.stock <= (p.lowStockThreshold ?? 0)).length;
-  const isOwner = user.role === "owner";
+  if (all.length === 0) {
+    return (
+      <Card>
+        <EmptyState icon={<Package className="size-5" />} title="Aucun produit pour l'instant">
+          Ajoutez ce que vous vendez : par exemple « Boissons », « Riz » ou « Crédit téléphone ».
+        </EmptyState>
+      </Card>
+    );
+  }
 
   return (
     <>
-      <PageHeader title="Produits & stock" description="Votre catalogue, vos prix et ce qu'il reste en boutique." />
-      <div className="mb-4 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3">
-        <StatTile label="Produits en vente" value={formatNumber(active.length)} footer={<span className="text-xs text-muted">{tracked.length} suivis en stock</span>} />
-        <StatTile
-          label="Alertes de stock"
-          value={formatNumber(alerts)}
-          footer={<span className={`text-xs ${alerts ? "text-warn" : "text-muted"}`}>{alerts ? "À réapprovisionner" : "Tout va bien"}</span>}
-        />
-        {isOwner && (
-          <StatTile
-            className="col-span-2 lg:col-span-1"
-            label="Valeur du stock"
-            value={formatMoney(stockValue, user.shop.currency)}
-            footer={<span className="text-xs text-muted">Au prix d&apos;achat</span>}
-          />
-        )}
-      </div>
-      <Card className="overflow-hidden">
-        <ProductsView
-          // Employees never receive purchase prices (and therefore margins).
-          products={isOwner ? products : products.map((p) => ({ ...p, costPrice: null }))}
-          categories={categories}
-          currency={user.shop.currency}
-          todayISO={today(user.shop.timezone)}
-          isOwner={isOwner}
-          initialFilter={params.filtre === "alerte" ? "alerte" : "tous"}
-        />
-      </Card>
+      <ul className="grid grid-cols-1 gap-3 md:grid-cols-2">
+        {active.map((p) => (
+          <ProductCard key={p.productId} product={p} money={money} />
+        ))}
+      </ul>
+      {archived.length > 0 && (
+        <details className="group mt-8">
+          <summary className="flex h-10 cursor-pointer list-none items-center gap-1.5 text-sm font-medium text-ink-2 hover:text-ink">
+            <ChevronRight className="size-4 transition-transform group-open:rotate-90" />
+            Produits que je ne vends plus ({archived.length})
+          </summary>
+          <ul className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
+            {archived.map((p) => (
+              <ProductCard key={p.productId} product={p} money={money} />
+            ))}
+          </ul>
+        </details>
+      )}
     </>
+  );
+}
+
+function ProductCard({ product: p, money }: { product: ProductTotals; money: (n: number) => string }) {
+  const ratio = p.investment > 0 ? Math.max(0, p.profit) / p.investment : null;
+  return (
+    <li>
+      <Link
+        href={`/produits/${p.productId}`}
+        className={cx(
+          "group flex h-full flex-col rounded-2xl border border-line bg-card p-4 shadow-card transition-colors hover:border-line-strong sm:p-5",
+          p.archived && "opacity-75",
+        )}
+      >
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="min-w-0 truncate text-base font-semibold text-ink">{p.name}</h2>
+          <ChevronRight className="size-5 shrink-0 text-muted transition-transform group-hover:translate-x-0.5" />
+        </div>
+        <dl className="tabular mt-3 grid grid-cols-2 gap-3 text-sm">
+          <div className="min-w-0">
+            <dt className="text-muted">Investi au départ</dt>
+            <dd className="truncate font-medium text-ink">{p.investment > 0 ? money(p.investment) : "—"}</dd>
+          </div>
+          <div className="min-w-0">
+            <dt className="text-muted">Bénéfice total</dt>
+            <dd className={cx("truncate font-medium", p.profit > 0 ? "text-good" : p.profit < 0 ? "text-bad" : "text-ink")}>
+              {p.profit > 0 ? "+" : ""}
+              {money(p.profit)}
+            </dd>
+          </div>
+        </dl>
+        {ratio !== null && (
+          <div className="mt-3">
+            <Meter ratio={ratio} color="var(--series-profit)" track="var(--series-profit-soft)" label="Investissement récupéré" />
+            <p className="tabular mt-1.5 text-xs text-ink-2">
+              {ratio >= 1 ? "Investissement récupéré ✓" : `${formatPercent(ratio)} de l'investissement récupéré`}
+            </p>
+          </div>
+        )}
+        <p className="mt-auto pt-3 text-xs text-muted">
+          {p.lastDate ? `Dernière saisie : ${formatDate(p.lastDate)}` : p.opening ? `Comptes repris au ${formatDate(p.opening.date)}` : "Rien de saisi pour l'instant"}
+        </p>
+      </Link>
+    </li>
   );
 }

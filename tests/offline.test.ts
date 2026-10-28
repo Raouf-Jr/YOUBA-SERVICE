@@ -1,82 +1,18 @@
-import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { createShopWithOwner } from "@/lib/data/account";
-import { addExpense, listExpenses } from "@/lib/data/expenses";
-import { createProduct, getProduct } from "@/lib/data/products";
-import { listSalesForDay, recordSales } from "@/lib/data/sales";
-import { connect, runMigrations, type Connection } from "@/lib/db/client";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { addEntry, entriesFor, isWaiting, newId, purgeSent, setOutboxStorage, type OutboxEntry } from "@/lib/offline/outbox";
 import type { SyncResult } from "@/lib/offline/types";
 
-// The real senders are Server Actions; the sync loop is tested with stand-ins.
-vi.mock("@/lib/actions/sales", () => ({ recordCheckout: vi.fn() }));
-vi.mock("@/lib/actions/expenses", () => ({ recordExpense: vi.fn() }));
+// The real sender is a Server Action; the sync loop is tested with stand-ins.
+vi.mock("@/lib/actions/entries", () => ({ saveDay: vi.fn() }));
 const { runSync } = await import("@/lib/offline/sync");
 
-let conn: Connection;
-
-beforeAll(async () => {
-  conn = await connect({ dataDir: "memory://" });
-  await runMigrations(conn);
-});
-
-afterAll(async () => {
-  await conn?.close();
-});
-
-describe("re-sending the same entry is harmless", () => {
-  it("records a checkout once and takes stock once", async () => {
-    const { shop, user } = await createShopWithOwner(conn.db, {
-      shopName: "B",
-      name: "Awa",
-      email: "idem@example.com",
-      password: "motdepasse1",
-      currency: "XOF",
-      timezone: "Africa/Abidjan",
-    });
-    const rice = await createProduct(
-      conn.db,
-      shop.id,
-      { name: "Riz", category: null, salePrice: 1000, costPrice: 800, unit: "sac", trackStock: true, lowStockThreshold: null, initialStock: 10 },
-      "2026-10-27",
-    );
-    const checkout = {
-      checkoutId: newId(),
-      date: "2026-10-27",
-      paymentMethod: "especes",
-      userId: user.id,
-      lines: [
-        { productId: rice.id, quantity: 2, unitPrice: 1000 },
-        { productId: rice.id, quantity: 5, unitPrice: 1000 }, // duplicate product line: ignored
-      ],
-    };
-    expect(await recordSales(conn.db, shop.id, checkout)).toBe(1);
-    expect(await recordSales(conn.db, shop.id, checkout)).toBe(0);
-    expect(await listSalesForDay(conn.db, shop.id, "2026-10-27")).toHaveLength(1);
-    expect((await getProduct(conn.db, shop.id, rice.id))!.stock).toBe(8);
-
-    // Without a checkout id (older clients), each call is a new sale.
-    const anonymous = { ...checkout, checkoutId: undefined };
-    await recordSales(conn.db, shop.id, anonymous);
-    await recordSales(conn.db, shop.id, anonymous);
-    expect(await listSalesForDay(conn.db, shop.id, "2026-10-27")).toHaveLength(3);
-
-    const expense = { date: "2026-10-27", category: "Transport", amount: 2000, description: null, clientRef: newId() };
-    expect(await addExpense(conn.db, shop.id, user.id, expense)).toBe(true);
-    expect(await addExpense(conn.db, shop.id, user.id, expense)).toBe(false);
-    expect(await listExpenses(conn.db, shop.id, { from: "2026-10-01", to: "2026-10-31" })).toHaveLength(1);
-  });
-});
-
-function entry(id: string, userId: string, createdAt: number): OutboxEntry {
+function entry(id: string, userId: string, createdAt: number, revenue = 1000): OutboxEntry {
   return {
     id,
-    kind: "expense",
     userId,
-    shopId: "s",
     createdAt,
     attempts: 0,
-    payload: { clientRef: id, shopId: "s", date: "2026-10-27", category: "Loyer", amount: 1, description: null },
-    summary: { label: id },
+    payload: { date: "2026-10-27", lines: [{ productId: "p", revenue, expense: 0, note: null }] },
   };
 }
 
@@ -86,18 +22,18 @@ describe("outbox sync", () => {
     setOutboxStorage({ getItem: (k) => data.get(k) ?? null, setItem: (k, v) => void data.set(k, v) });
   });
 
-  it("sends the user's entries oldest first, marks them sent, then forgets them", async () => {
-    addEntry(entry("b", "u1", 2));
-    addEntry(entry("a", "u1", 1));
+  it("sends the user's days oldest first (the last version wins), marks them sent, then forgets them", async () => {
+    addEntry(entry("b", "u1", 2, 2000));
+    addEntry(entry("a", "u1", 1, 1000));
     addEntry(entry("other", "u2", 0));
     addEntry(entry("a", "u1", 1)); // same id twice: stored once
-    const sent: string[] = [];
+    const sent: number[] = [];
     const outcome = await runSync("u1", async (e) => {
-      sent.push(e.id);
-      return { ok: true, added: true };
+      sent.push(e.payload.lines[0].revenue);
+      return { ok: true };
     });
     expect(outcome).toBe("done");
-    expect(sent).toEqual(["a", "b"]);
+    expect(sent).toEqual([1000, 2000]);
     expect(entriesFor("u1").filter(isWaiting)).toEqual([]);
     expect(entriesFor("u1").every((e) => e.sentAt)).toBe(true);
     expect(entriesFor("u2")).toHaveLength(1);
@@ -110,7 +46,7 @@ describe("outbox sync", () => {
     expect(entriesFor("u1")).toEqual([]);
   });
 
-  it("stops on network errors and keeps the entries for later", async () => {
+  it("stops on network errors and keeps the days for later", async () => {
     addEntry(entry("a", "u1", 1));
     addEntry(entry("b", "u1", 2));
     const outcome = await runSync("u1", async () => {
@@ -123,16 +59,16 @@ describe("outbox sync", () => {
     ]);
   });
 
-  it("stops when signed out, flags refused entries and skips other accounts' entries", async () => {
+  it("stops when signed out and flags refused days", async () => {
     addEntry(entry("bad", "u1", 1));
     addEntry(entry("ok", "u1", 2));
     const answers: Record<string, SyncResult> = {
-      bad: { ok: false, reason: "invalid", message: "Dépense invalide" },
-      ok: { ok: true, added: true },
+      bad: { ok: false, reason: "invalid", message: "Journée invalide" },
+      ok: { ok: true },
     };
     expect(await runSync("u1", async (e) => answers[e.id])).toBe("done");
     expect(entriesFor("u1").map((e) => [e.id, e.error ?? null, !!e.sentAt])).toEqual([
-      ["bad", "Dépense invalide", false],
+      ["bad", "Journée invalide", false],
       ["ok", null, true],
     ]);
 

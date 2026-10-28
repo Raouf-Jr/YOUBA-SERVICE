@@ -17,16 +17,17 @@ export function LogoMark({ className }: { className?: string }) {
   );
 }
 
-export function Logo({ className, subtitle }: { className?: string; subtitle?: string }) {
+/** "YOUBA SERVICE" → bold first word, lighter rest. Without a name, just the mark. */
+export function Logo({ name, className }: { name?: string; className?: string }) {
+  const [first, ...rest] = (name ?? "").trim().split(/\s+/);
   return (
-    <span className={cx("flex items-center gap-2.5", className)}>
-      <LogoMark />
-      <span className="flex min-w-0 flex-col leading-tight">
-        <span className="text-[0.9375rem] font-bold tracking-tight text-ink">
-          YOUBA <span className="font-medium text-ink-2">SERVICE</span>
+    <span className={cx("flex min-w-0 items-center gap-2.5", className)}>
+      <LogoMark className="shrink-0" />
+      {first && (
+        <span className="truncate text-base font-bold tracking-tight text-ink">
+          {first} {rest.length > 0 && <span className="font-medium text-ink-2">{rest.join(" ")}</span>}
         </span>
-        {subtitle && <span className="truncate text-xs text-muted">{subtitle}</span>}
-      </span>
+      )}
     </span>
   );
 }

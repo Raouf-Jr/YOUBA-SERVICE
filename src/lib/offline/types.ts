@@ -1,23 +1,10 @@
-/** What the device stores while offline, and sends to the server once it can. */
-
-export type CheckoutPayload = {
-  checkoutId: string;
-  shopId: string;
+/** A day's figures as typed on the device, sent to the server right away or once it can be reached. */
+export type DayPayload = {
   date: string;
-  paymentMethod: string;
-  lines: { productId: string; quantity: number; unitPrice: number }[];
-};
-
-export type ExpensePayload = {
-  clientRef: string;
-  shopId: string;
-  date: string;
-  category: string;
-  amount: number;
-  description: string | null;
+  lines: { productId: string; revenue: number; expense: number; note: string | null }[];
 };
 
 export type SyncResult =
-  | { ok: true; added: boolean }
-  /** auth: signed out · shop: entry belongs to another account · invalid: refused for good */
-  | { ok: false; reason: "auth" | "shop" | "invalid"; message: string };
+  | { ok: true }
+  /** auth: signed out · invalid: refused for good */
+  | { ok: false; reason: "auth" | "invalid"; message: string };

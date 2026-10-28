@@ -5,56 +5,19 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { hashPassword, verifyPassword } from "@/lib/auth/password";
 import { createSession, destroySession } from "@/lib/auth/session";
-import { CURRENCIES } from "@/lib/constants";
 import { clientIp } from "@/lib/client-ip";
-import { createShopWithOwner, findUserByEmail, normalizeEmail } from "@/lib/data/account";
 import { checkLimit, clearLimit, hitLimit, LIMITS, tooManyAttemptsMessage } from "@/lib/data/rate-limit";
+import { ensureFirstUser, findUserByUsername, normalizeUsername } from "@/lib/data/users";
 import { getDb } from "@/lib/db";
-import { fields, invalid, parseForm, type FormState } from "@/lib/forms";
+import { invalid, parseForm, type FormState } from "@/lib/forms";
 
-const isTimeZone = (tz: string) => {
-  try {
-    new Intl.DateTimeFormat("en", { timeZone: tz });
-    return true;
-  } catch {
-    return false;
-  }
-};
-
-const signupSchema = z.object({
-  shopName: fields.text("Le nom de la boutique", 80),
-  name: fields.text("Votre nom", 80),
-  email: z.email("Adresse e-mail invalide").max(160),
-  password: z.string().min(8, "Au moins 8 caractères").max(200),
-  currency: z.enum(CURRENCIES.map((c) => c.value) as [string, ...string[]], "Devise invalide"),
-  timezone: z
-    .string()
-    .optional()
-    .transform((tz) => (tz && isTimeZone(tz) ? tz : "Africa/Abidjan")),
-});
-
-export async function signup(_: FormState, formData: FormData): Promise<FormState> {
-  const { data, errors } = parseForm(signupSchema, formData);
-  if (!data) return invalid(errors);
-
-  const db = await getDb();
-  const limit = await hitLimit(db, `signup:ip:${await clientIp()}`, LIMITS.signupPerIp);
-  if (limit.blocked) return { ok: false, message: tooManyAttemptsMessage(limit) };
-  if (await findUserByEmail(db, data.email)) {
-    return invalid({ email: "Un compte existe déjà avec cette adresse." });
-  }
-  const { user } = await createShopWithOwner(db, data);
-  await createSession(db, user.id);
-  redirect("/tableau-de-bord");
-}
-
-// Unknown e-mails still pay for a hash check, so response time doesn't reveal which accounts exist.
+// Unknown accounts still pay for a hash check, so response time doesn't reveal which accounts exist.
 let dummyHash: Promise<string> | undefined;
 const getDummyHash = () => (dummyHash ??= hashPassword(randomBytes(16).toString("hex")));
 
 const loginSchema = z.object({
-  email: z.string().trim().min(1, "Adresse e-mail obligatoire"),
-  password: z.string().min(1, "Mot de passe obligatoire"),
+  username: z.string().trim().min(1, "Identifiant obligatoire").max(60),
+  password: z.string().min(1, "Mot de passe obligatoire").max(200),
 });
 
 export async function login(_: FormState, formData: FormData): Promise<FormState> {
@@ -62,23 +25,25 @@ export async function login(_: FormState, formData: FormData): Promise<FormState
   if (!data) return invalid(errors);
 
   const db = await getDb();
+  await ensureFirstUser(db);
+
   // Failed attempts are counted per account and per IP; a success clears the account's counter.
-  const emailKey = `login:email:${normalizeEmail(data.email)}`;
+  const accountKey = `login:user:${normalizeUsername(data.username)}`;
   const ipKey = `login:ip:${await clientIp()}`;
   const blocked = (
-    await Promise.all([checkLimit(db, emailKey, LIMITS.loginPerEmail), checkLimit(db, ipKey, LIMITS.loginPerIp)])
+    await Promise.all([checkLimit(db, accountKey, LIMITS.loginPerAccount), checkLimit(db, ipKey, LIMITS.loginPerIp)])
   ).find((s) => s.blocked);
   if (blocked) return { ok: false, message: tooManyAttemptsMessage(blocked) };
 
-  const user = await findUserByEmail(db, data.email);
+  const user = await findUserByUsername(db, data.username);
   const valid = await verifyPassword(data.password, user?.passwordHash ?? (await getDummyHash()));
   if (!user || !valid) {
-    await Promise.all([hitLimit(db, emailKey, LIMITS.loginPerEmail), hitLimit(db, ipKey, LIMITS.loginPerIp)]);
-    return { ok: false, message: "E-mail ou mot de passe incorrect." };
+    await Promise.all([hitLimit(db, accountKey, LIMITS.loginPerAccount), hitLimit(db, ipKey, LIMITS.loginPerIp)]);
+    return { ok: false, message: "Identifiant ou mot de passe incorrect." };
   }
-  await clearLimit(db, emailKey);
+  await clearLimit(db, accountKey);
   await createSession(db, user.id);
-  redirect(user.role === "owner" ? "/tableau-de-bord" : "/ventes");
+  redirect("/saisie");
 }
 
 export async function logout() {

@@ -1,5 +1,4 @@
-import { recordExpense } from "@/lib/actions/expenses";
-import { recordCheckout } from "@/lib/actions/sales";
+import { saveDay } from "@/lib/actions/entries";
 import { entriesFor, isWaiting, purgeSent, updateEntry, type OutboxEntry } from "./outbox";
 import type { SyncResult } from "./types";
 
@@ -7,10 +6,10 @@ export type SyncOutcome = "done" | "network" | "auth";
 
 type Sender = (entry: OutboxEntry) => Promise<SyncResult>;
 
-const send: Sender = (entry) => (entry.kind === "sale" ? recordCheckout(entry.payload) : recordExpense(entry.payload));
+const send: Sender = (entry) => saveDay(entry.payload);
 
 /**
- * Sends the user's pending entries, oldest first, one at a time.
+ * Sends the user's queued days, oldest first, one at a time (so the last version of a day wins).
  * Safe to call often: concurrent calls share one run, and other tabs wait their turn.
  */
 export async function runSync(userId: string, sender: Sender = send): Promise<SyncOutcome> {
@@ -27,8 +26,7 @@ export async function runSync(userId: string, sender: Sender = send): Promise<Sy
     }
     if (result.ok) updateEntry(entry.id, { sentAt: Date.now() });
     else if (result.reason === "auth") return "auth";
-    else if (result.reason === "invalid") updateEntry(entry.id, { error: result.message });
-    // "shop": the entry belongs to another account on this device; leave it alone.
+    else updateEntry(entry.id, { error: result.message });
   }
   return "done";
 }

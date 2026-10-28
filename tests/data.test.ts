@@ -1,13 +1,11 @@
-import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { hashPassword, verifyPassword } from "@/lib/auth/password";
-import { createShopWithOwner, findUserByEmail } from "@/lib/data/account";
-import { addExpense, deleteExpense, expensesByCategory, listExpenses } from "@/lib/data/expenses";
-import { adjustStock, createProduct, getProduct, restockProduct } from "@/lib/data/products";
-import { deleteSale, listSalesForDay, recordSales } from "@/lib/data/sales";
-import { firstActivity, lowStockProducts, productStats, totals } from "@/lib/data/stats";
+import { verifyPassword } from "@/lib/auth/password";
+import { entriesForDay, entriesInRange, productHistory, saveDay } from "@/lib/data/entries";
+import { createProduct, deleteProduct, listProducts, setArchived } from "@/lib/data/products";
+import { dailyTotals, firstDate, productTotals, sumTotals } from "@/lib/data/reports";
+import { getSettings, updateSettings } from "@/lib/data/settings";
+import { ensureFirstUser, findUserByUsername } from "@/lib/data/users";
 import { connect, runMigrations, type Connection } from "@/lib/db/client";
-import { products as productsTable } from "@/lib/db/schema";
 
 let conn: Connection;
 
@@ -20,136 +18,103 @@ afterAll(async () => {
   await conn?.close();
 });
 
-const day = "2026-10-20";
-const range = { from: "2026-10-01", to: "2026-10-31" };
+const base = { investment: 0, startDate: null, openingDate: null, openingRevenue: 0, openingExpense: 0 };
 
-async function newShop(email: string) {
-  return createShopWithOwner(conn.db, {
-    shopName: "Boutique",
-    name: "Awa",
-    email,
-    password: "motdepasse1",
-    currency: "XOF",
-    timezone: "Africa/Abidjan",
-  });
-}
-
-describe("passwords", () => {
-  it("hashes and verifies", async () => {
-    const hash = await hashPassword("secret123");
-    expect(hash.startsWith("scrypt$")).toBe(true);
-    expect(await verifyPassword("secret123", hash)).toBe(true);
-    expect(await verifyPassword("wrong", hash)).toBe(false);
+describe("settings", () => {
+  it("starts as YOUBA SERVICE in F CFA and can be renamed", async () => {
+    expect(await getSettings(conn.db)).toMatchObject({ shopName: "YOUBA SERVICE", currency: "XOF", timezone: "Africa/Lome" });
+    await updateSettings(conn.db, { shopName: "Boutique Test", currency: "EUR" });
+    expect(await getSettings(conn.db)).toMatchObject({ shopName: "Boutique Test", currency: "EUR" });
+    await updateSettings(conn.db, { shopName: "YOUBA SERVICE", currency: "XOF" });
   });
 });
 
-describe("shop workflow", () => {
-  it("normalises emails on sign-up", async () => {
-    await newShop("Awa@Example.com ");
-    expect(await findUserByEmail(conn.db, "awa@example.com")).not.toBeNull();
+describe("first account", () => {
+  it("is not created in production without ADMIN_USERNAME / ADMIN_PASSWORD", async () => {
+    await ensureFirstUser(conn.db, { NODE_ENV: "production" });
+    expect(await findUserByUsername(conn.db, "youba")).toBeNull();
   });
 
-  it("tracks stock through sales, cancellations, restocks and counts", async () => {
-    const { shop, user } = await newShop("stock@example.com");
-    const rice = await createProduct(
-      conn.db,
-      shop.id,
-      { name: "Riz", category: "Alimentation", salePrice: 1000, costPrice: 800, unit: "sac", trackStock: true, lowStockThreshold: 5, initialStock: 10 },
-      day,
-    );
-    const credit = await createProduct(
-      conn.db,
-      shop.id,
-      { name: "Crédit", category: null, salePrice: 500, costPrice: null, unit: "pièce", trackStock: false, lowStockThreshold: null, initialStock: 0 },
-      day,
-    );
+  it("comes from the environment, once", async () => {
+    await ensureFirstUser(conn.db, { NODE_ENV: "production", ADMIN_USERNAME: " Youba ", ADMIN_PASSWORD: "secret-2026" });
+    const user = (await findUserByUsername(conn.db, "YOUBA"))!;
+    expect(user).toMatchObject({ username: "youba", name: "Youba" });
+    expect(await verifyPassword("secret-2026", user.passwordHash)).toBe(true);
+    // Later changes to the variables don't touch the existing account.
+    await ensureFirstUser(conn.db, { NODE_ENV: "production", ADMIN_USERNAME: "autre", ADMIN_PASSWORD: "autre-2026" });
+    expect(await findUserByUsername(conn.db, "autre")).toBeNull();
+  });
+});
 
-    const count = await recordSales(conn.db, shop.id, {
-      date: day,
-      paymentMethod: "especes",
-      userId: user.id,
-      lines: [
-        { productId: rice.id, quantity: 3, unitPrice: 1000 },
-        { productId: credit.id, quantity: 4, unitPrice: 500 },
-        { productId: rice.id, quantity: 0, unitPrice: 1000 },
-      ],
-    });
-    expect(count).toBe(2);
-    expect((await getProduct(conn.db, shop.id, rice.id))!.stock).toBe(7);
+describe("products and days", () => {
+  it("saves a day by setting values, so saving again changes nothing; empty clears", async () => {
+    const rice = await createProduct(conn.db, { ...base, name: "Riz" });
+    const drinks = await createProduct(conn.db, { ...base, name: "Boissons" });
+    const day = "2026-10-20";
 
-    const t = await totals(conn.db, shop.id, range);
-    expect(t.revenue).toBe(5000);
-    expect(t.items).toBe(7);
-    expect(t.costedRevenue).toBe(3000);
-    expect(t.costOfGoods).toBe(2400);
+    await saveDay(conn.db, day, [
+      { productId: rice.id, revenue: 10_000, expense: 4_000, note: "Sacs achetés" },
+      { productId: drinks.id, revenue: 3_000, expense: 0, note: null },
+      { productId: "00000000-0000-4000-8000-000000000000", revenue: 1, expense: 1, note: null }, // unknown: ignored
+    ]);
+    await saveDay(conn.db, day, [{ productId: rice.id, revenue: 10_000, expense: 4_000, note: "Sacs achetés" }]);
+    const first = await entriesForDay(conn.db, day);
+    expect(first).toHaveLength(2);
 
-    // Cancelling a sale puts the stock back.
-    const [riceSale] = (await listSalesForDay(conn.db, shop.id, day)).filter((s) => s.productName === "Riz");
-    await deleteSale(conn.db, shop.id, riceSale.id);
-    expect((await getProduct(conn.db, shop.id, rice.id))!.stock).toBe(10);
+    // Correcting the day replaces the figures.
+    await saveDay(conn.db, day, [{ productId: rice.id, revenue: 12_000, expense: 4_000, note: null }]);
+    expect((await entriesForDay(conn.db, day)).find((e) => e.productId === rice.id)).toMatchObject({ revenue: 12_000, note: null });
 
-    // Restocking adds stock, updates the cost and records the purchase as an expense.
-    await restockProduct(conn.db, shop.id, {
-      productId: rice.id,
-      date: day,
-      quantity: 5,
-      unitCost: 850,
-      recordExpense: true,
-      note: null,
-      userId: user.id,
-    });
-    const restocked = (await getProduct(conn.db, shop.id, rice.id))!;
-    expect(restocked.stock).toBe(15);
-    expect(restocked.costPrice).toBe(850);
-    const [purchase] = await expensesByCategory(conn.db, shop.id, range);
-    expect(purchase).toMatchObject({ category: "Achat de marchandises", amount: 4250 });
+    // An all-empty line removes the day for that product.
+    await saveDay(conn.db, day, [{ productId: drinks.id, revenue: 0, expense: 0, note: null }]);
+    expect(await entriesForDay(conn.db, day)).toHaveLength(1);
 
-    // An inventory count overrides the stock and shows up in alerts below the threshold.
-    await adjustStock(conn.db, shop.id, { productId: rice.id, date: day, counted: 4, note: null });
-    const low = await lowStockProducts(conn.db, shop.id);
-    expect(low.map((p) => [p.name, p.stock])).toEqual([["Riz", 4]]);
+    expect(await productHistory(conn.db, rice.id)).toEqual([{ date: day, revenue: 12_000, expense: 4_000, note: null }]);
+    expect(await entriesInRange(conn.db, { from: "2026-10-01", to: "2026-10-31" })).toEqual([
+      { date: day, product: "Riz", revenue: 12_000, expense: 4_000, note: null },
+    ]);
 
-    expect(await firstActivity(conn.db, shop.id)).toBe(day);
+    await deleteProduct(conn.db, rice.id);
+    await deleteProduct(conn.db, drinks.id);
+    expect(await entriesForDay(conn.db, day)).toEqual([]);
   });
 
-  it("keeps sales history when a product is deleted", async () => {
-    const { shop, user } = await newShop("history@example.com");
-    const soap = await createProduct(
-      conn.db,
-      shop.id,
-      { name: "Savon", category: null, salePrice: 300, costPrice: 200, unit: "pièce", trackStock: false, lowStockThreshold: null, initialStock: 0 },
-      day,
-    );
-    await recordSales(conn.db, shop.id, { date: day, paymentMethod: "mobile_money", userId: user.id, lines: [{ productId: soap.id, quantity: 2, unitPrice: 300 }] });
-    await conn.db.delete(productsTable).where(eq(productsTable.id, soap.id));
-    const stats = await productStats(conn.db, shop.id, range);
-    expect(stats).toEqual([expect.objectContaining({ name: "Savon", quantity: 2, revenue: 600, margin: 200 })]);
-  });
-
-  it("never lets one shop read or change another shop's data", async () => {
-    const a = await newShop("a@example.com");
-    const b = await newShop("b@example.com");
-    const product = await createProduct(
-      conn.db,
-      a.shop.id,
-      { name: "Huile", category: null, salePrice: 2000, costPrice: null, unit: "pièce", trackStock: true, lowStockThreshold: null, initialStock: 5 },
-      day,
-    );
-    await addExpense(conn.db, a.shop.id, a.user.id, { date: day, category: "Loyer", amount: 50000, description: null });
-
-    // Shop B cannot see A's product, sell it, or delete A's expense.
-    expect(await getProduct(conn.db, b.shop.id, product.id)).toBeNull();
-    const sold = await recordSales(conn.db, b.shop.id, {
-      date: day,
-      paymentMethod: "especes",
-      userId: b.user.id,
-      lines: [{ productId: product.id, quantity: 1, unitPrice: 2000 }],
+  it("totals per product include carried-over figures when their date is in the period", async () => {
+    const shop = await createProduct(conn.db, {
+      name: "Boutique",
+      investment: 500_000,
+      startDate: "2026-01-01",
+      openingDate: "2026-09-30",
+      openingRevenue: 300_000,
+      openingExpense: 120_000,
     });
-    expect(sold).toBe(0);
-    const [expense] = await listExpenses(conn.db, a.shop.id, range);
-    await deleteExpense(conn.db, b.shop.id, expense.id);
-    expect(await listExpenses(conn.db, a.shop.id, range)).toHaveLength(1);
-    expect((await totals(conn.db, b.shop.id, range)).expenses).toBe(0);
-    expect((await getProduct(conn.db, a.shop.id, product.id))!.stock).toBe(5);
+    const other = await createProduct(conn.db, { ...base, name: "Crédit", investment: 50_000 });
+    await saveDay(conn.db, "2026-10-01", [
+      { productId: shop.id, revenue: 20_000, expense: 5_000, note: null },
+      { productId: other.id, revenue: 1_000, expense: 900, note: null },
+    ]);
+    await saveDay(conn.db, "2026-10-02", [{ productId: shop.id, revenue: 10_000, expense: 0, note: null }]);
+
+    // Since the beginning: carried-over totals included.
+    const all = await productTotals(conn.db, null);
+    const shopAll = all.find((p) => p.name === "Boutique")!;
+    expect(shopAll).toMatchObject({ revenue: 330_000, expense: 125_000, profit: 205_000, days: 2, investment: 500_000 });
+    expect(shopAll.opening).toEqual({ date: "2026-09-30", revenue: 300_000, expense: 120_000 });
+    expect(sumTotals(all)).toEqual({ revenue: 331_000, expense: 125_900, profit: 205_100 });
+
+    // October only: the carry-over (30 September) is outside.
+    const october = await productTotals(conn.db, { from: "2026-10-01", to: "2026-10-31" }, shop.id);
+    expect(october).toEqual([expect.objectContaining({ revenue: 30_000, expense: 5_000, opening: null })]);
+
+    expect(await dailyTotals(conn.db, { from: "2026-10-01", to: "2026-10-31" })).toEqual([
+      { date: "2026-10-01", revenue: 21_000, expense: 5_900 },
+      { date: "2026-10-02", revenue: 10_000, expense: 0 },
+    ]);
+    expect(await firstDate(conn.db)).toBe("2026-01-01");
+
+    // Archived products leave the entry screen but keep their history.
+    await setArchived(conn.db, other.id, true);
+    expect((await listProducts(conn.db)).map((p) => p.name)).toEqual(["Boutique"]);
+    expect((await listProducts(conn.db, { includeArchived: true })).map((p) => p.name)).toEqual(["Boutique", "Crédit"]);
   });
 });

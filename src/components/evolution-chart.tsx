@@ -6,7 +6,7 @@ import { niceTicks, type SeriesPoint } from "@/lib/stats";
 import { cx } from "./ui";
 
 const SERIES = [
-  { key: "revenue", name: "Chiffre d'affaires", color: "var(--series-revenue)" },
+  { key: "revenue", name: "Recettes", color: "var(--series-revenue)" },
   { key: "expenses", name: "Dépenses", color: "var(--series-expenses)" },
   { key: "profit", name: "Bénéfice", color: "var(--series-profit)" },
 ] as const;

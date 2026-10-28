@@ -6,12 +6,9 @@ export type Limit = { max: number; windowMinutes: number };
 
 /** `max` hits are allowed per window; beyond that the key is blocked until the window ends. */
 export const LIMITS = {
-  loginPerEmail: { max: 5, windowMinutes: 15 },
-  // Generous: many customers can share one IP behind a mobile operator or a cybercafé.
+  loginPerAccount: { max: 5, windowMinutes: 15 },
+  // Generous: many people can share one IP behind a mobile operator or a cybercafé.
   loginPerIp: { max: 40, windowMinutes: 15 },
-  signupPerIp: { max: 10, windowMinutes: 60 },
-  resetPerEmail: { max: 3, windowMinutes: 60 },
-  resetPerIp: { max: 10, windowMinutes: 60 },
   passwordChangePerUser: { max: 5, windowMinutes: 15 },
 } satisfies Record<string, Limit>;
 

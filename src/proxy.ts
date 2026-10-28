@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 const SESSION_COOKIE = "youba_session";
-const PUBLIC_PATHS = ["/", "/connexion", "/inscription", "/mot-de-passe-oublie", "/reinitialiser", "/hors-ligne"];
+const PUBLIC_PATHS = ["/connexion", "/hors-ligne"];
 
 /**
  * Optimistic check only: bounces visitors without a session cookie to the login page.
@@ -11,12 +11,11 @@ export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const hasSession = request.cookies.has(SESSION_COOKIE);
 
-  if (pathname === "/" && hasSession) {
-    return NextResponse.redirect(new URL("/tableau-de-bord", request.url));
+  if (pathname === "/") {
+    return NextResponse.redirect(new URL(hasSession ? "/saisie" : "/connexion", request.url));
   }
   if (!PUBLIC_PATHS.includes(pathname) && !hasSession) {
-    const url = new URL("/connexion", request.url);
-    return NextResponse.redirect(url);
+    return NextResponse.redirect(new URL("/connexion", request.url));
   }
   return NextResponse.next();
 }

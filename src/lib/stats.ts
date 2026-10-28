@@ -66,19 +66,6 @@ export function round2(value: number): number {
   return Math.round(value * 100) / 100;
 }
 
-/**
- * How much of the money invested has been earned back, and roughly when the rest will be,
- * at the recent monthly profit pace.
- */
-export function payback(totalInvested: number, cumulativeProfit: number, recentMonthlyProfit: number) {
-  const recovered = Math.max(0, cumulativeProfit);
-  const ratio = totalInvested > 0 ? Math.min(1, recovered / totalInvested) : 0;
-  const remaining = Math.max(0, totalInvested - recovered);
-  const monthsLeft =
-    remaining === 0 ? 0 : recentMonthlyProfit > 0 ? Math.ceil(remaining / recentMonthlyProfit) : null;
-  return { recovered, ratio, remaining, monthsLeft };
-}
-
 /** "Nice" axis ticks (0, 25 000, 50 000…) covering [min, max]. */
 export function niceTicks(min: number, max: number, count = 4): number[] {
   if (min === max) {

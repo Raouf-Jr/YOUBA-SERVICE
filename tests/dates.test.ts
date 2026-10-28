@@ -7,7 +7,6 @@ import {
   endOfMonth,
   granularityFor,
   isISODate,
-  previousRange,
   startOfWeek,
   today,
 } from "@/lib/dates";
@@ -27,9 +26,8 @@ describe("dates", () => {
     expect(endOfMonth("2028-02-10")).toBe("2028-02-29");
   });
 
-  it("counts days inclusively and finds the previous period", () => {
+  it("counts days inclusively", () => {
     expect(daysInRange({ from: "2026-10-01", to: "2026-10-31" })).toBe(31);
-    expect(previousRange({ from: "2026-10-01", to: "2026-10-07" })).toEqual({ from: "2026-09-24", to: "2026-09-30" });
   });
 
   it("starts weeks on Monday", () => {

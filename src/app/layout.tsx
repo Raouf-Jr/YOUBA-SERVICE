@@ -1,17 +1,18 @@
 import type { Metadata, Viewport } from "next";
 import { ServiceWorkerRegistration } from "@/components/service-worker";
+import { THEME_SCRIPT } from "@/lib/theme-script";
 import "./globals.css";
 
 export const metadata: Metadata = {
   title: {
-    default: "YOUBA SERVICE — Gestion de boutique",
+    default: "YOUBA SERVICE",
     template: "%s · YOUBA SERVICE",
   },
-  description:
-    "Suivez les ventes, les dépenses, le stock et les bénéfices de votre boutique, jour après jour, avec des rapports et des courbes clairs.",
+  description: "Suivi des recettes, des dépenses et des bénéfices de la boutique, jour après jour.",
   applicationName: "YOUBA SERVICE",
   appleWebApp: { capable: true, title: "YOUBA", statusBarStyle: "default" },
   formatDetection: { telephone: false },
+  robots: { index: false, follow: false },
 };
 
 export const viewport: Viewport = {
@@ -26,7 +27,10 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="fr" className="h-full antialiased">
+    <html lang="fr" className="h-full antialiased" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
+      </head>
       <body className="min-h-full">
         {children}
         <ServiceWorkerRegistration />

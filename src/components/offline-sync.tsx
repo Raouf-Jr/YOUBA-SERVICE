@@ -11,7 +11,7 @@ import { warmOfflineCache } from "./service-worker";
 const RETRY_MS = 30_000;
 
 /**
- * Sends sales and expenses saved on this device as soon as the server can be reached,
+ * Sends the days saved on this device as soon as the server can be reached,
  * and tells the user what is going on.
  */
 export function OfflineSync({ userId }: { userId: string }) {
@@ -21,9 +21,9 @@ export function OfflineSync({ userId }: { userId: string }) {
   const waiting = entries.filter(isWaiting);
   const refused = entries.filter((e) => e.error);
 
-  // Keep Sales and Expenses available offline.
+  // Keep the entry page available offline.
   useEffect(() => {
-    warmOfflineCache(["/ventes", "/depenses"]);
+    warmOfflineCache(["/saisie"]);
   }, []);
 
   // Sent entries are kept a short while (until the page shows them), then forgotten.
@@ -59,7 +59,7 @@ export function OfflineSync({ userId }: { userId: string }) {
   if (offline) {
     banner = (
       <Bar tone="warn" icon={<CloudOff />}>
-        <strong>Hors connexion.</strong> Vos ventes et dépenses sont gardées sur cet appareil
+        <strong>Pas de réseau.</strong> Vos saisies sont gardées sur ce téléphone
         {pendingCount > 0 && ` (${pendingCount} en attente)`} et seront envoyées dès le retour du réseau.
       </Bar>
     );
@@ -84,7 +84,7 @@ export function OfflineSync({ userId }: { userId: string }) {
       <Bar tone="bad" icon={<TriangleAlert />}>
         {refused.length} saisie{refused.length > 1 ? "s" : ""} n&apos;{refused.length > 1 ? "ont" : "a"} pas pu être
         enregistrée{refused.length > 1 ? "s" : ""}.{" "}
-        <Link href={refused[0].kind === "sale" ? "/ventes" : "/depenses"} className="font-semibold underline underline-offset-2">
+        <Link href={`/saisie?date=${refused[0].payload.date}`} className="font-semibold underline underline-offset-2">
           Voir
         </Link>
       </Bar>
@@ -92,7 +92,7 @@ export function OfflineSync({ userId }: { userId: string }) {
   }
 
   return (
-    <div aria-live="polite" className="no-print sticky top-14 z-20 lg:top-0">
+    <div aria-live="polite" className="no-print sticky top-16 z-20">
       {banner}
     </div>
   );
@@ -105,8 +105,8 @@ function Bar({ tone, icon, children }: { tone: "warn" | "info" | "bad"; icon: Re
     bad: "bg-bad-soft text-bad border-bad/20",
   };
   return (
-    <div role="status" className={`border-b px-4 py-2.5 text-sm sm:px-6 lg:px-10 ${tones[tone]}`}>
-      <p className="mx-auto flex max-w-6xl items-start gap-2 [&_svg]:mt-0.5 [&_svg]:size-4 [&_svg]:shrink-0">
+    <div role="status" className={`border-b px-4 py-2.5 text-sm sm:px-6 ${tones[tone]}`}>
+      <p className="mx-auto flex max-w-5xl items-start gap-2 [&_svg]:mt-0.5 [&_svg]:size-4 [&_svg]:shrink-0">
         {icon}
         <span>{children}</span>
       </p>

@@ -2,16 +2,16 @@
  * YOUBA SERVICE — service worker.
  * Lets the app open without network: code and styles are kept forever (their names change
  * with every version), the main pages are kept as of the last visit, and anything else falls
- * back to the "Hors connexion" page. Sales and expenses typed offline are handled by the page
- * itself (outbox in localStorage), not here.
+ * back to the "Hors connexion" page. Days typed offline are handled by the page itself
+ * (outbox in localStorage), not here.
  */
-const VERSION = "v2";
+const VERSION = "v3";
 const SHELL_CACHE = `youba-shell-${VERSION}`; // offline page, icons, manifest
 const STATIC_CACHE = "youba-static"; // /_next/static: immutable, shared across versions
 const PAGES_CACHE = "youba-pages"; // signed-in pages: wiped at logout
 const OFFLINE_URL = "/hors-ligne";
 const SHELL = [OFFLINE_URL, "/manifest.webmanifest", "/icon.svg", "/icons/icon-192.png"];
-const APP_PAGES = ["/tableau-de-bord", "/ventes", "/depenses", "/produits", "/investissements", "/rapports", "/parametres"];
+const APP_PAGES = ["/saisie", "/produits", "/rapports", "/reglages"];
 const MAX_STATIC_ENTRIES = 400;
 const NETWORK_TIMEOUT_MS = 6000;
 

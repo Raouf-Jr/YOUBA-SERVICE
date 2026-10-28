@@ -7,7 +7,7 @@ export const metadata: Metadata = { title: "Hors connexion", robots: { index: fa
 export default function OfflinePage() {
   return (
     <div className="flex min-h-dvh flex-col items-center justify-center px-6 text-center">
-      <Logo className="mb-10" />
+      <Logo className="mb-10 [&_svg]:size-11" />
       <div className="mb-4 flex size-14 items-center justify-center rounded-full bg-warn-soft text-warn">
         <svg viewBox="0 0 24 24" className="size-7" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
           <path d="M2 8.8a15 15 0 0 1 20 0M5 12.4a10 10 0 0 1 14 0M8.5 15.9a5 5 0 0 1 7 0" strokeLinecap="round" />
@@ -17,23 +17,15 @@ export default function OfflinePage() {
       </div>
       <h1 className="text-xl font-semibold">Vous êtes hors connexion</h1>
       <p className="mt-2 max-w-sm text-ink-2">
-        Cette page n&apos;a pas encore été enregistrée sur votre appareil. Les pages <strong>Ventes</strong> et{" "}
-        <strong>Dépenses</strong> fonctionnent sans réseau si vous les avez déjà ouvertes une fois.
+        Cette page n&apos;est pas encore enregistrée sur votre téléphone. La page <strong>Saisie</strong> marche sans
+        réseau si vous l&apos;avez déjà ouverte une fois : vos chiffres partiront dès le retour du réseau.
       </p>
-      <div className="mt-8 flex flex-col gap-2 sm:flex-row">
-        <a
-          href="/ventes"
-          className="inline-flex h-11 items-center justify-center rounded-xl bg-accent px-5 font-medium text-accent-ink"
-        >
-          Saisir les ventes
-        </a>
-        <a
-          href="/depenses"
-          className="inline-flex h-11 items-center justify-center rounded-xl border border-line-strong bg-card px-5 font-medium text-ink"
-        >
-          Ajouter une dépense
-        </a>
-      </div>
+      <a
+        href="/saisie"
+        className="mt-8 inline-flex h-12 items-center justify-center rounded-xl bg-accent px-6 font-medium text-accent-ink"
+      >
+        Saisir la journée
+      </a>
       <p className="mt-6 text-sm text-muted">Dès que le réseau revient, rechargez la page.</p>
     </div>
   );

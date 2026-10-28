@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { resolvePeriod } from "@/lib/period";
-import { buildSeries, niceTicks, payback } from "@/lib/stats";
+import { buildSeries, niceTicks } from "@/lib/stats";
 
 describe("buildSeries", () => {
   it("fills empty days with zeros and computes profit", () => {
@@ -33,14 +33,6 @@ describe("buildSeries", () => {
       ["2026-10-12", 0, false],
       ["2026-10-19", 10, true],
     ]);
-  });
-});
-
-describe("payback", () => {
-  it("estimates the months left at the recent pace", () => {
-    expect(payback(1000, 400, 200)).toEqual({ recovered: 400, ratio: 0.4, remaining: 600, monthsLeft: 3 });
-    expect(payback(1000, 1500, 200).ratio).toBe(1);
-    expect(payback(1000, -50, -10)).toEqual({ recovered: 0, ratio: 0, remaining: 1000, monthsLeft: null });
   });
 });
 

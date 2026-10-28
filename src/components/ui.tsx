@@ -140,21 +140,6 @@ export function LinkButton({
   return <Link className={buttonClass(variant, size, className)} {...props} />;
 }
 
-export function IconButton({ className, label, ...props }: ComponentProps<"button"> & { label: string }) {
-  return (
-    <button
-      type="button"
-      aria-label={label}
-      title={label}
-      className={cx(
-        "inline-flex size-8 items-center justify-center rounded-lg text-muted transition-colors hover:bg-subtle hover:text-ink [&_svg]:size-4",
-        className,
-      )}
-      {...props}
-    />
-  );
-}
-
 // ---------------------------------------------------------------------------
 // Form controls
 
@@ -217,10 +202,6 @@ export function Select({ className, children, ...props }: ComponentProps<"select
   );
 }
 
-export function Textarea({ className, ...props }: ComponentProps<"textarea">) {
-  return <textarea className={cx(inputClass, "h-auto min-h-20 py-2.5", className)} {...props} />;
-}
-
 export function Checkbox({ label, description, ...props }: ComponentProps<"input"> & { label: ReactNode; description?: ReactNode }) {
   return (
     <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-line p-3 transition-colors hover:bg-subtle has-checked:border-accent/40 has-checked:bg-accent-soft/50">
@@ -262,6 +243,3 @@ export function Badge({ tone = "neutral", className, children }: { tone?: Tone; 
   );
 }
 
-export function Dot({ color, className }: { color: string; className?: string }) {
-  return <span aria-hidden className={cx("inline-block size-2.5 shrink-0 rounded-full", className)} style={{ background: color }} />;
-}

@@ -5,29 +5,8 @@
     {
       "idx": 0,
       "version": "7",
-      "when": 1793118665296,
+      "when": 1793186016690,
       "tag": "0000_init",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "7",
-      "when": 1793128833739,
-      "tag": "0001_password_reset",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "7",
-      "when": 1793129317185,
-      "tag": "0002_rate_limits",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "7",
-      "when": 1793129643748,
-      "tag": "0003_offline_sync",
       "breakpoints": true
     }
   ]

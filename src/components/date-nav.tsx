@@ -3,63 +3,78 @@
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { addDays } from "@/lib/dates";
 import { cx, inputClass } from "./ui";
 
-/** ‹ date › navigator that stays on the same page, changing `?{param}=`. */
+/**
+ * ‹ date › navigator that stays on the same page, changing `?date=`.
+ * `confirmLeave` asks before picking another date (links are guarded by the page itself);
+ * `disabled` freezes it (no network).
+ */
 export function DateNav({
   basePath,
   value,
-  prev,
-  next,
   todayValue,
-  param = "date",
-  type = "date",
-  max,
+  confirmLeave,
+  disabled = false,
 }: {
   basePath: string;
   value: string;
-  prev: string;
-  next: string | null;
   todayValue: string;
-  param?: string;
-  type?: "date" | "month";
-  max?: string;
+  confirmLeave?: string | null;
+  disabled?: boolean;
 }) {
   const router = useRouter();
-  const href = (v: string) => `${basePath}?${param}=${v}`;
+  const href = (v: string) => `${basePath}?date=${v}`;
+  const prev = addDays(value, -1);
+  const next = value < todayValue ? addDays(value, 1) : null;
   const arrow =
-    "inline-flex size-10 shrink-0 items-center justify-center rounded-xl border border-line-strong bg-card text-ink-2 transition-colors hover:bg-subtle hover:text-ink";
+    "inline-flex size-11 shrink-0 items-center justify-center rounded-xl border border-line-strong bg-card text-ink-2 transition-colors hover:bg-subtle hover:text-ink";
+  const off = "pointer-events-none opacity-40";
+
   return (
     <div className="flex items-center gap-2">
-      <Link href={href(prev)} scroll={false} className={arrow} aria-label="Précédent">
-        <ChevronLeft className="size-4" />
+      <Link
+        href={href(prev)}
+        scroll={false}
+        className={cx(arrow, disabled && off)}
+        aria-label="Jour précédent"
+        aria-disabled={disabled || undefined}
+        tabIndex={disabled ? -1 : undefined}
+      >
+        <ChevronLeft className="size-5" />
       </Link>
       <input
-        type={type}
+        type="date"
         value={value}
-        max={max}
-        aria-label={type === "month" ? "Choisir le mois" : "Choisir la date"}
-        onChange={(e) => e.target.value && router.push(href(e.target.value), { scroll: false })}
-        className={cx(inputClass, "h-10 w-auto min-w-0 flex-1 rounded-xl px-3 text-sm sm:w-44 sm:flex-none")}
+        max={todayValue}
+        disabled={disabled}
+        aria-label="Choisir la date"
+        onChange={(e) => {
+          const v = e.target.value;
+          if (v && v <= todayValue && (!confirmLeave || window.confirm(confirmLeave))) router.push(href(v), { scroll: false });
+        }}
+        className={cx(inputClass, "w-auto min-w-0 flex-1 px-3 text-base sm:w-48 sm:flex-none")}
       />
-      {next ? (
-        <Link href={href(next)} scroll={false} className={arrow} aria-label="Suivant">
-          <ChevronRight className="size-4" />
+      {next && !disabled ? (
+        <Link href={href(next)} scroll={false} className={arrow} aria-label="Jour suivant">
+          <ChevronRight className="size-5" />
         </Link>
       ) : (
-        <span className={cx(arrow, "pointer-events-none opacity-40")} aria-hidden>
-          <ChevronRight className="size-4" />
+        <span className={cx(arrow, off)} aria-hidden>
+          <ChevronRight className="size-5" />
         </span>
       )}
-      {value !== todayValue && (
+      {value !== todayValue && !disabled && (
         <Link
-          href={href(todayValue)}
+          href={basePath}
           scroll={false}
-          className="inline-flex h-10 shrink-0 items-center rounded-xl px-3 text-sm font-medium text-accent-text hover:bg-accent-soft"
+            className="inline-flex h-11 shrink-0 items-center rounded-xl px-3 text-sm font-medium text-accent-text hover:bg-accent-soft"
         >
-          {type === "month" ? "Ce mois" : "Aujourd'hui"}
+          Aujourd&apos;hui
         </Link>
       )}
     </div>
   );
 }
+

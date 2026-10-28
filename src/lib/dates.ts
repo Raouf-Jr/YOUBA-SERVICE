@@ -80,20 +80,6 @@ export function startOfWeek(value: ISODate): ISODate {
   return addDays(value, -weekday);
 }
 
-export function minDate(a: ISODate, b: ISODate): ISODate {
-  return a < b ? a : b;
-}
-
-export function maxDate(a: ISODate, b: ISODate): ISODate {
-  return a > b ? a : b;
-}
-
-/** The period of equal length immediately before `range`, for comparisons. */
-export function previousRange(range: DateRange): DateRange {
-  const length = daysInRange(range);
-  return { from: addDays(range.from, -length), to: addDays(range.from, -1) };
-}
-
 export function granularityFor(range: DateRange): Granularity {
   const length = daysInRange(range);
   if (length <= 45) return "day";
@@ -121,10 +107,6 @@ export function buckets(range: DateRange, granularity: Granularity): ISODate[] {
           : addMonths(cursor, 1);
   }
   return out;
-}
-
-export function eachMonth(range: DateRange): ISODate[] {
-  return buckets(range, "month");
 }
 
 // ---------------------------------------------------------------------------

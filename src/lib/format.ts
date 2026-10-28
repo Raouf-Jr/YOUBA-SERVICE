@@ -41,12 +41,6 @@ export function formatPercent(ratio: number): string {
   return percentFmt.format(ratio || 0).replace(/ /g, " ");
 }
 
-/** Relative change between two values; null when there is no basis for comparison. */
-export function change(current: number, previous: number): number | null {
-  if (!previous) return null;
-  return (current - previous) / Math.abs(previous);
-}
-
 /** Currency symbol as rendered by Intl, e.g. "F CFA", "€". */
 export function currencySymbol(currency: string): string {
   const parts = moneyFormatter(currency).formatToParts(0);

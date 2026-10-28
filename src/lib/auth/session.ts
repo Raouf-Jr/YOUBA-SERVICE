@@ -3,7 +3,7 @@ import { createHash, randomBytes } from "node:crypto";
 import { and, eq, gt, lt, ne } from "drizzle-orm";
 import { cookies } from "next/headers";
 import type { DB } from "@/lib/db";
-import { sessions, shops, users } from "@/lib/db/schema";
+import { sessions, users } from "@/lib/db/schema";
 
 export const SESSION_COOKIE = "youba_session";
 const SESSION_DAYS = 30;
@@ -31,24 +31,9 @@ export async function readSession(db: DB) {
   const token = (await cookies()).get(SESSION_COOKIE)?.value;
   if (!token) return null;
   const [row] = await db
-    .select({
-      user: {
-        id: users.id,
-        name: users.name,
-        email: users.email,
-        role: users.role,
-      },
-      shop: {
-        id: shops.id,
-        name: shops.name,
-        currency: shops.currency,
-        timezone: shops.timezone,
-        monthlyGoal: shops.monthlyGoal,
-      },
-    })
+    .select({ id: users.id, name: users.name, username: users.username })
     .from(sessions)
     .innerJoin(users, eq(users.id, sessions.userId))
-    .innerJoin(shops, eq(shops.id, users.shopId))
     .where(and(eq(sessions.id, hashToken(token)), gt(sessions.expiresAt, new Date())))
     .limit(1);
   return row ?? null;
