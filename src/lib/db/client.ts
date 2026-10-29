@@ -56,8 +56,17 @@ export async function runMigrations(conn: Connection) {
     try {
       await migrate(conn.db as never, { migrationsFolder });
     } catch (error) {
+      const cause = (error as { cause?: unknown })?.cause ?? error;
+      // errno 51 = ENOSPC: the computer's disk is full.
+      if ((cause as { errno?: unknown })?.errno === 51) {
+        throw new Error(
+          "Le disque de cet ordinateur est plein : la base locale (.data) ne peut pas s'enregistrer. " +
+            "Libérez de la place (Corbeille, Téléchargements, dossier .next), puis relancez npm run db:seed.",
+          { cause: error },
+        );
+      }
       // The embedded database can be left unreadable if the program was killed while writing.
-      if (/Aborted\(\)/.test(String((error as { cause?: unknown })?.cause ?? error))) {
+      if (/Aborted\(\)/.test(String(cause))) {
         throw new Error(
           "La base locale (.data/pglite) ne s'ouvre plus, sans doute après un arrêt brutal. " +
             "Arrêtez le serveur, supprimez le dossier .data (rm -rf .data) puis relancez npm run db:seed.",
