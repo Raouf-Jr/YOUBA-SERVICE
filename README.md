@@ -81,7 +81,7 @@ Deux services gratuits : une **base de données** (Neon) et un **hébergeur** (N
 ### 1. Base de données — Neon
 
 1. Créez un compte sur [neon.com](https://neon.com) puis un projet, région **AWS US East 2 (Ohio)** (à côté des serveurs Netlify).
-2. Dans **Connect**, activez **Connection pooling** et copiez la chaîne de connexion (`postgresql://…-pooler…/neondb?sslmode=require`).
+2. Dans **Connect**, activez **Connection pooling** et copiez la chaîne de connexion (`postgresql://…-pooler…/neondb?sslmode=require…`) telle quelle, même si elle se termine par `&channel_binding=require`.
 
 ### 2. Hébergement — Netlify
 
@@ -97,6 +97,8 @@ Deux services gratuits : une **base de données** (Neon) et un **hébergeur** (N
      - facultatif, `SUPPORT_WHATSAPP` = votre numéro WhatsApp avec l'indicatif du pays, par exemple `+228 90 12 34 56` : la page de connexion affiche alors « Mot de passe oublié ? Écrire sur WhatsApp », avec un message déjà prêt.
 4. **Deploy**. Le premier déploiement prend 2 à 4 minutes (il crée aussi les tables). Le site est ensuite en ligne à une adresse du type `https://nom-au-hasard.netlify.app`, modifiable dans **Domain management**.
 5. Chaque `git push` sur cette branche redéploie automatiquement.
+
+L'offre gratuite de Netlify fonctionne avec des crédits mensuels : chaque déploiement en consomme (15 au moment de l'écriture), le trafic d'une seule boutique très peu. Si les crédits du mois sont épuisés, le site est mis en pause jusqu'au mois suivant, sans jamais rien facturer. Regroupez donc les modifications plutôt que de pousser dix fois par jour.
 
 Le compte est créé au premier passage sur la page de connexion, à partir de `ADMIN_USERNAME` / `ADMIN_PASSWORD`. Ensuite, Youba peut changer son mot de passe dans **Réglages** (modifier les variables n'a plus d'effet).
 

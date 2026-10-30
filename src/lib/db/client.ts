@@ -24,7 +24,7 @@ export async function connect(options: { dataDir?: string } = {}): Promise<Conne
     const { default: postgres } = await import("postgres");
     const { drizzle } = await import("drizzle-orm/postgres-js");
     // prepare:false keeps us compatible with transaction poolers (Neon, Supabase).
-    const client = postgres(url, { prepare: false, max: 5, idle_timeout: 20, onnotice: () => {} });
+    const client = postgres(databaseUrl(url), { prepare: false, max: 5, idle_timeout: 20, onnotice: () => {} });
     return {
       db: drizzle(client, { schema }) as unknown as DB,
       kind: "postgres",
@@ -45,6 +45,20 @@ export async function connect(options: { dataDir?: string } = {}): Promise<Conne
     kind: "pglite",
     close: () => client.close(),
   };
+}
+
+/**
+ * The connection string as postgres.js needs it. It sends unknown options to the server, which
+ * rejects them: drop the libpq-only ones that hosts add to their strings (Neon: channel_binding).
+ */
+export function databaseUrl(url: string) {
+  try {
+    const parsed = new URL(url);
+    parsed.searchParams.delete("channel_binding");
+    return parsed.toString();
+  } catch {
+    return url;
+  }
 }
 
 export async function runMigrations(conn: Connection) {
