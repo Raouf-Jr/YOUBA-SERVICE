@@ -49,12 +49,14 @@ export async function saveProduct(_: FormState, formData: FormData): Promise<For
 
 export async function archiveProduct(id: string, archived: boolean) {
   await requireUser();
+  if (!z.uuid().safeParse(id).success) return;
   await products.setArchived(await getDb(), id, archived);
   revalidatePath("/", "layout");
 }
 
 export async function deleteProduct(id: string) {
   await requireUser();
+  if (!z.uuid().safeParse(id).success) return;
   await products.deleteProduct(await getDb(), id);
   revalidatePath("/", "layout");
   redirect("/produits");

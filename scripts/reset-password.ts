@@ -1,9 +1,11 @@
 /**
- * Sets a new password without signing in (forgotten password), or creates the account if needed.
+ * Sets a new password without signing in (forgotten password), or creates the account if needed,
+ * and lifts any sign-in block left by wrong attempts.
  *   npm run user:reset-password -- youba NouveauMotDePasse
  * In production, run it with DATABASE_URL set to the production database.
  */
 import { connect, runMigrations } from "../src/lib/db/client";
+import { clearLoginLimits } from "../src/lib/data/rate-limit";
 import { createUser, findUserByUsername, setPassword, signOutEverywhere } from "../src/lib/data/users";
 
 async function main() {
@@ -27,6 +29,7 @@ async function main() {
     const created = await createUser(conn.db, { username, password });
     console.log(`Compte « ${created.username} » créé.`);
   }
+  await clearLoginLimits(conn.db);
   await conn.close();
 }
 

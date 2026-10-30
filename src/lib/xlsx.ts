@@ -9,7 +9,7 @@ export type CellType = "text" | "money" | "date" | "number";
 export type Column = { header: string; type?: CellType; width?: number };
 export type Sheet = { name: string; columns: Column[]; rows: (string | number | null | undefined)[][] };
 
-const STYLE = { text: 0, header: 1, money: 2, date: 3, number: 4, moneyBold: 5, textBold: 6 } as const;
+const STYLE = { text: 0, header: 1, money: 2, date: 3, number: 4, moneyBold: 5, textBold: 6, cents: 7, centsBold: 8 } as const;
 
 const escapeXml = (s: string) =>
   s
@@ -39,8 +39,20 @@ function cell(ref: string, value: string | number | null | undefined, type: Cell
     if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return cell(ref, String(value), "text", bold);
     return `<c r="${ref}" s="${STYLE.date}"><v>${excelDate(value)}</v></c>`;
   }
-  const style = type === "money" ? (bold ? STYLE.moneyBold : STYLE.money) : STYLE.number;
-  return `<c r="${ref}" s="${style}"><v>${Number(value)}</v></c>`;
+  const n = Number(value);
+  // Whole amounts without decimals ("125 000"); cents only when there are some ("1 500,50").
+  const whole = Number.isInteger(n);
+  const style =
+    type === "money"
+      ? whole
+        ? bold
+          ? STYLE.moneyBold
+          : STYLE.money
+        : bold
+          ? STYLE.centsBold
+          : STYLE.cents
+      : STYLE.number;
+  return `<c r="${ref}" s="${style}"><v>${n}</v></c>`;
 }
 
 function sheetXml(sheet: Sheet) {
@@ -75,14 +87,16 @@ const STYLES =
   `<fill><patternFill patternType="solid"><fgColor rgb="FFE3F1EE"/><bgColor indexed="64"/></patternFill></fill></fills>` +
   `<borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders>` +
   `<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>` +
-  `<cellXfs count="7">` +
+  `<cellXfs count="9">` +
   `<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>` +
   `<xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1"/>` +
   `<xf numFmtId="164" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/>` +
   `<xf numFmtId="165" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/>` +
-  `<xf numFmtId="4" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/>` +
+  `<xf numFmtId="3" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/>` +
   `<xf numFmtId="164" fontId="1" fillId="0" borderId="0" xfId="0" applyNumberFormat="1" applyFont="1"/>` +
   `<xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/>` +
+  `<xf numFmtId="4" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/>` +
+  `<xf numFmtId="4" fontId="1" fillId="0" borderId="0" xfId="0" applyNumberFormat="1" applyFont="1"/>` +
   `</cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>`;
 
 export function buildXlsx(sheets: Sheet[]): Uint8Array {

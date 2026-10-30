@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { checkLimit, clearLimit, hitLimit, tooManyAttemptsMessage } from "@/lib/data/rate-limit";
+import { checkLimit, clearLimit, clearLoginLimits, hitLimit, tooManyAttemptsMessage } from "@/lib/data/rate-limit";
 import { connect, runMigrations, type Connection } from "@/lib/db/client";
 
 let conn: Connection;
@@ -48,6 +48,18 @@ describe("rate limiter", () => {
       Array.from({ length: 6 }, () => hitLimit(conn.db, "test:concurrent", { max: 10, windowMinutes: 5 }, at(0))),
     );
     expect(results.filter((r) => r.blocked)).toHaveLength(1);
+  });
+
+  it("lifts every sign-in block after an administrator reset, and only those", async () => {
+    const account = { max: 1, windowMinutes: 15 };
+    for (const key of ["login:user:youba", "login:ip:1.2.3.4", "password-change:u1"]) {
+      await hitLimit(conn.db, key, account, at(0));
+      await hitLimit(conn.db, key, account, at(0));
+    }
+    await clearLoginLimits(conn.db);
+    expect((await checkLimit(conn.db, "login:user:youba", account, at(1))).blocked).toBe(false);
+    expect((await checkLimit(conn.db, "login:ip:1.2.3.4", account, at(1))).blocked).toBe(false);
+    expect((await checkLimit(conn.db, "password-change:u1", account, at(1))).blocked).toBe(true);
   });
 
   it("explains the wait in minutes", () => {

@@ -30,7 +30,8 @@ describe("formatting", () => {
           columns: [{ header: "Date", type: "date" }, { header: "Recettes", type: "money" }, { header: "Note" }],
           rows: [
             ["2026-10-28", 12500, "Riz & savon"],
-            ["Total", 12500, null],
+            ["2026-10-29", 1500.5, null],
+            ["Total", 14000.5, null],
           ],
         },
       ]),
@@ -40,7 +41,8 @@ describe("formatting", () => {
     expect(sheet).toContain('<c r="A2" s="3"><v>46323</v></c>'); // 28/10/2026 as an Excel date
     expect(sheet).toContain('<c r="B2" s="2"><v>12500</v></c>');
     expect(sheet).toContain("Riz &amp; savon");
-    expect(sheet).toContain('<c r="B3" s="5"><v>12500</v></c>'); // total row in bold
+    expect(sheet).toContain('<c r="B3" s="7"><v>1500.5</v></c>'); // cents shown only when there are some
+    expect(sheet).toContain('<c r="B4" s="8"><v>14000.5</v></c>'); // total row in bold
     expect(strFromU8(files["xl/workbook.xml"])).toContain('name="Par jour  &lt;test&gt;"');
   });
 });

@@ -113,11 +113,16 @@ Cela efface tout le contenu de la base. Relancez ensuite le déploiement dans Ne
 
 ### Mot de passe oublié
 
-Depuis votre ordinateur, avec la chaîne Neon :
+Cette version n'envoie pas d'e-mail : c'est l'installateur qui remet un mot de passe, depuis son ordinateur, dans le dossier du projet.
+
+1. Dans Neon, **Connect** : copiez la chaîne de connexion.
+2. Lancez (en remplaçant la chaîne et le nouveau mot de passe, 8 caractères au moins) :
 
 ```bash
 DATABASE_URL="postgresql://…" npm run user:reset-password -- youba NouveauMotDePasse
 ```
+
+Le nouveau mot de passe marche tout de suite, même si le compte était bloqué après des essais ratés. Les téléphones encore connectés sont déconnectés. Youba peut ensuite le changer lui-même dans **Réglages**.
 
 ### Première utilisation
 

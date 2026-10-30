@@ -1,4 +1,4 @@
-import { eq, lt, sql } from "drizzle-orm";
+import { eq, like, lt, sql } from "drizzle-orm";
 import type { DB } from "@/lib/db/client";
 import { rateLimits } from "@/lib/db/schema";
 
@@ -49,6 +49,11 @@ export async function hitLimit(db: DB, key: string, limit: Limit, now = new Date
 
 export async function clearLimit(db: DB, key: string) {
   await db.delete(rateLimits).where(eq(rateLimits.key, key));
+}
+
+/** Lifts every sign-in block at once (after a password reset by the administrator). */
+export async function clearLoginLimits(db: DB) {
+  await db.delete(rateLimits).where(like(rateLimits.key, "login:%"));
 }
 
 export function tooManyAttemptsMessage(status: LimitStatus) {
