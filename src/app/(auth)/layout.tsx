@@ -1,3 +1,4 @@
+import { MessageCircle } from "lucide-react";
 import { connection } from "next/server";
 import { Suspense } from "react";
 import { Logo } from "@/components/brand";
@@ -5,6 +6,7 @@ import { ClearOfflinePages } from "@/components/service-worker";
 import { ThemeToggle } from "@/components/theme";
 import { getSettings } from "@/lib/data/settings";
 import { getDb } from "@/lib/db";
+import { supportWhatsApp, whatsAppLink } from "@/lib/support";
 
 export default function AuthLayout({ children }: LayoutProps<"/">) {
   return (
@@ -21,10 +23,42 @@ export default function AuthLayout({ children }: LayoutProps<"/">) {
       </div>
       <div className="relative w-full max-w-md">{children}</div>
       <ClearOfflinePages />
-      <p className="relative mt-8 max-w-xs text-center text-xs text-muted">
-        Mot de passe oublié ? Demandez à la personne qui a installé l&apos;application.
-      </p>
+      <Suspense fallback={<AskInstaller />}>
+        <ForgotPassword />
+      </Suspense>
     </div>
+  );
+}
+
+/** Who to contact when the password is forgotten: WhatsApp when SUPPORT_WHATSAPP is set. */
+async function ForgotPassword() {
+  await connection();
+  const support = supportWhatsApp();
+  if (!support) return <AskInstaller />;
+  const shop = await getSettings(await getDb());
+  const href = whatsAppLink(support.digits, `Bonjour, j'ai oublié mon mot de passe ${shop.shopName}. Pouvez-vous m'aider ?`);
+  return (
+    <div className="relative mt-6 flex w-full max-w-md flex-col items-center gap-2 text-center">
+      <p className="text-sm text-ink-2">Mot de passe oublié ?</p>
+      <a
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="inline-flex h-12 items-center gap-2.5 rounded-full border border-line-strong bg-card px-5 font-medium text-ink shadow-card transition-colors hover:bg-subtle"
+      >
+        <MessageCircle className="size-5 text-[#1fae55]" aria-hidden />
+        Écrire sur WhatsApp
+      </a>
+      <p className="tabular text-sm text-muted">{support.display}</p>
+    </div>
+  );
+}
+
+function AskInstaller() {
+  return (
+    <p className="relative mt-8 max-w-xs text-center text-xs text-muted">
+      Mot de passe oublié ? Demandez à la personne qui a installé l&apos;application.
+    </p>
   );
 }
 

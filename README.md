@@ -90,10 +90,11 @@ Deux services gratuits : une **base de données** (Neon) et un **hébergeur** (N
 3. Dans l'écran de configuration :
    - **Branch to deploy** : la branche qui contient cette version ;
    - **Build command** et **Publish directory** : laissez ce que propose Netlify (`netlify.toml` impose `npm run build:deploy` et `.next`) ;
-   - **Environment variables → Add**, trois variables :
+   - **Environment variables → Add**, trois variables (plus une facultative) :
      - `DATABASE_URL` = la chaîne Neon ;
      - `ADMIN_USERNAME` = l'identifiant de Youba, par exemple `youba` ;
-     - `ADMIN_PASSWORD` = son mot de passe (8 caractères au moins).
+     - `ADMIN_PASSWORD` = son mot de passe (8 caractères au moins) ;
+     - facultatif, `SUPPORT_WHATSAPP` = votre numéro WhatsApp avec l'indicatif du pays, par exemple `+228 90 12 34 56` : la page de connexion affiche alors « Mot de passe oublié ? Écrire sur WhatsApp », avec un message déjà prêt.
 4. **Deploy**. Le premier déploiement prend 2 à 4 minutes (il crée aussi les tables). Le site est ensuite en ligne à une adresse du type `https://nom-au-hasard.netlify.app`, modifiable dans **Domain management**.
 5. Chaque `git push` sur cette branche redéploie automatiquement.
 
@@ -113,7 +114,9 @@ Cela efface tout le contenu de la base. Relancez ensuite le déploiement dans Ne
 
 ### Mot de passe oublié
 
-Cette version n'envoie pas d'e-mail : c'est l'installateur qui remet un mot de passe, depuis son ordinateur, dans le dossier du projet.
+Cette version n'envoie pas d'e-mail : Youba vous contacte (sur WhatsApp si `SUPPORT_WHATSAPP` est rempli), puis vous lui remettez un mot de passe depuis votre ordinateur, dans le dossier du projet.
+
+Pour changer de numéro WhatsApp plus tard : modifiez `SUPPORT_WHATSAPP` dans Netlify, puis **Deploys → Trigger deploy**. En local, ajoutez la ligne `SUPPORT_WHATSAPP=+228…` dans le fichier `.env` puis relancez `npm run dev`.
 
 1. Dans Neon, **Connect** : copiez la chaîne de connexion.
 2. Lancez (en remplaçant la chaîne et le nouveau mot de passe, 8 caractères au moins) :
